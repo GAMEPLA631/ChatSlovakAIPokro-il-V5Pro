@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Pokročilý V5 Pro (s Obrázkami)</title>
+    <title>ChatSlovak AI Pokročilý V5 PRO (s Roblox Lua 3D)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
@@ -98,22 +98,17 @@
             margin-bottom: 0.5rem;
             line-height: 1.4;
         }
-        .image-container {
-            margin-top: 1rem;
-            text-align: center;
-            border: 2px solid rgba(0, 0, 0, 0.1);
+        
+        /* Štýl pre kódové bloky v správach */
+        .ai-message pre {
+            background-color: #1f2937;
+            color: #d1d5db;
+            padding: 1rem;
             border-radius: 0.5rem;
-            overflow: hidden;
-            background-color: #fff;
+            overflow-x: auto;
+            margin-top: 0.75rem;
         }
-        .generated-image {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            /* Zabezpečí, že 16:9 obrázok sa v kontajneri zobrazí správne bez skreslenia */
-            aspect-ratio: 16 / 9; 
-            object-fit: contain; 
-        }
+
         /* Responsívny layout tlačidiel */
         .button-group {
             display: flex;
@@ -127,18 +122,6 @@
                 width: 100%;
             }
         }
-        
-        /* Špecifický štýl pre neviditeľný input[file], ktorý je umiestnený nad vizuálnym tlačidlom */
-        #image-upload-wrapper input[type="file"] {
-            /* Skrytie predvoleného vzhľadu */
-            opacity: 0;
-            /* Zabezpečí, že zaberá celú plochu vizuálneho tlačidla pod ním */
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            cursor: pointer;
-            z-index: 10; 
-        }
     </style>
 </head>
 <body>
@@ -149,9 +132,9 @@
 <div id="chat-container">
     <!-- Chat Header -->
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
-        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Image-to-Image)</h1>
-        <p class="text-sm text-gray-400">**Nová funkcia:** Nahrajte obrázok pre jeho úpravu pomocou popisu, alebo nechajte pole prázdne pre generovanie od základu.</p>
-        <!-- INDIKÁTOR STAVU LIMITU (Kontrola je lokálna cez localStorage, NIE cez databázu Firebase) -->
+        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D)</h1>
+        <p class="text-sm text-gray-400">**Nová funkcia:** Zadajte popis pre generovanie komplexného Lua kódu 3D modelu (Roblox Command Bar).</p>
+        <!-- INDIKÁTOR STAVU LIMITU -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
             Načítavam limit...
         </span>
@@ -161,45 +144,24 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol aktualizovaný pre **Image-to-Image** úpravy. Teraz môžete nahrať vlastný obrázok a pomocou textového popisu ho nechať pretransformovať. Pre úpravu **nahrajte súbor** a potom kliknite na **Generovať Obrázok**.</p>
+            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**.</p>
         </div>
     </div>
 
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="hidden">
-        <div class="animate-pulse">Rozmýšľam...</div>
+        <div class="animate-pulse"></div>
     </div>
 
-    <!-- Input Form s troma tlačidlami -->
+    <!-- Input Form s dvoma tlačidlami -->
     <form id="chat-form" class="p-4 chat-footer">
-        
-        <!-- NOVÉ UMIESTNENIE: Sekcia pre náhľad a status (teraz hore) -->
-        <div class="flex items-center gap-2 mb-3">
-             <div id="image-preview" class="hidden h-16 w-16 rounded-lg overflow-hidden border-2 border-indigo-400 p-1 bg-white flex-shrink-0">
-                <img id="preview-img" class="object-cover w-full h-full" alt="Náhľad nahraného obrázku">
-            </div>
-             <p id="image-status" class="text-xs text-gray-400">Popis pre úpravu (alebo generovanie) zadajte dole.</p>
-        </div>
-
         <div class="flex space-x-3">
-            <input type="text" id="user-input" placeholder="Zadajte popis pre generovanie alebo úpravu..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            <input type="text" id="user-input" placeholder="Zadajte popis modelu (napr. Vesmírna loď s 3 tryskami) alebo otázku..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
             
             <div class="button-group">
-                <!-- Tlačidlo pre nahrávanie súboru (teraz ako prvé tlačidlo v skupine) -->
-                <div id="image-upload-wrapper" class="relative min-w-max">
-                    <input type="file" id="image-upload" accept="image/png, image/jpeg">
-                    <!-- Tlačidlo s vizuálnym štýlom (len vizuál) -->
-                    <button type="button" id="upload-visual-button" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-150 flex items-center justify-center min-w-max h-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
-                        </svg>
-                        <span id="upload-text">Nahrať Súbor</span>
-                    </button>
-                </div>
-
-                <!-- Tlačidlo pre generovanie obrázka -->
-                <button type="button" id="send-image-button" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center justify-center disabled:bg-indigo-400 min-w-max">
-                    Generovať Obrázok
+                <!-- Tlačidlo pre generovanie 3D modelu -->
+                <button type="button" id="send-3d-model-button" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-150 flex items-center justify-center disabled:bg-purple-400 min-w-max">
+                    Generovať 3D Model
                 </button>
                 
                 <!-- Tlačidlo pre chat -->
@@ -426,36 +388,38 @@
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Konfigurácia pre text (Gemini 2.5 Pro)
+    // Konfigurácia pre text a 3D modely (Gemini 2.5 Pro)
     const textModelName = 'gemini-2.5-pro'; 
     const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
 
-    // Konfigurácia pre obrázky (teraz Image-to-Image / Editácia)
-    const imageModelName = 'gemini-2.5-flash-image-preview'; // ZMENENÉ pre Image-to-Image/Editáciu
-    const imageApiUrl = `${apiUrlBase}${imageModelName}:generateContent?key=${apiKey}`; // ZMENENÉ - používa generateContent
-    
-    // Globálne pre Base64 dát a MIME type nahraného obrázku
-    let uploadedImageBase64 = null;
-    let uploadedImageMimeType = null;
-
-    const systemInstruction = {
+    // Všeobecná systémová inštrukcia pre chat
+    const systemInstructionChat = {
         parts: [{ 
-            text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické, logicky štruktúrované (napr. s použitím očíslovaných bodov, odsekov alebo zoznamov) a musia preukazovať pokročilé kritické myslenie. Vyhni sa zbytočnému tučnému písmu (markdown **), aby bol hlasový výstup plynulejší. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy, ak si to otázka vyžaduje. Odpovedaj výhradne v slovenčine." 
+            text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické, logicky štruktúrované (napr. s použitím očíslovaných bodov, odsekov alebo zoznamov). Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy, ak si to otázka vyžaduje. Odpovedaj výhradne v slovenčine." 
         }]
     };
+    
+    // Systémová inštrukcia pre generovanie 3D Lua kódu
+    const systemInstruction3DModel = {
+        parts: [{
+            text: `You are an expert Roblox Lua script writer. Your task is to generate clean, self-contained Lua code for the Roblox Studio Command Bar to construct an advanced 3D model based on the user's description. The code MUST:
+1.  Be runnable instantly in the Command Bar.
+2.  Use basic Roblox Parts, CFrame, and Materials.
+3.  Be contained in a single code block.
+4.  Start with 'local model = Instance.new("Model", game.Workspace)' and ensure all created parts are parented to this model for easy deletion.
+5.  Use comments sparingly, only for complex logic.
+6.  The final output MUST ONLY contain the Lua code (no introductory text, explanations, or markdown fences outside the code block).`
+        }]
+    };
+
 
     let chatHistory = [];
     const messagesDiv = document.getElementById('messages');
     const form = document.getElementById('chat-form');
     const input = document.getElementById('user-input');
     const sendChatButton = document.getElementById('send-chat-button');
-    const sendImageButton = document.getElementById('send-image-button');
+    const send3DModelButton = document.getElementById('send-3d-model-button'); // ZMENENÉ ID
     const loadingIndicator = document.getElementById('loading-indicator');
-    const imageUploadInput = document.getElementById('image-upload');
-    const imagePreviewDiv = document.getElementById('image-preview');
-    const previewImg = document.getElementById('preview-img');
-    const imageStatus = document.getElementById('image-status');
-    const uploadText = document.getElementById('upload-text');
 
 
     // --- Utility Functions ---
@@ -503,112 +467,44 @@
         messagesDiv.appendChild(bubble);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
-
-    function displayImage(base64Data, prompt, isModification) {
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ai-message w-full max-w-lg mx-auto`;
-        
-        const imageContainer = document.createElement('div');
-        imageContainer.className = 'image-container';
-
-        const image = document.createElement('img');
-        image.src = `data:image/png;base64,${base64Data}`;
-        image.alt = `Generovaný obrázok: ${prompt}`;
-        image.className = 'generated-image';
-
-        const downloadLink = document.createElement('a');
-        downloadLink.href = image.src;
-        downloadLink.download = `obrazok_16x9_${Date.now()}.png`; 
-        downloadLink.className = 'block w-full bg-blue-600 text-white p-2 text-center hover:bg-blue-700 transition duration-150 rounded-b-lg';
-        downloadLink.textContent = 'Stiahnuť obrázok (vysoká kvalita)';
-
-        const description = document.createElement('p');
-        description.className = 'text-xs text-gray-500 p-2 italic';
-        description.textContent = isModification 
-            ? `Upravený obrázok (16:9) na základe popisu: "${prompt}"`
-            : `Generovaný obrázok (16:9) na základe popisu: "${prompt}"`;
-
-
-        imageContainer.appendChild(image);
-        imageContainer.appendChild(downloadLink);
-        
-        bubble.appendChild(description);
-        bubble.appendChild(imageContainer);
-
-
-        messagesDiv.appendChild(bubble);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        speakText(isModification ? "Obrázok bol úspešne upravený a je pripravený na stiahnutie." : "Obrázok bol úspešne vygenerovaný a je pripravený na stiahnutie.");
-    }
-
-    function setLoading(isLoading, isImage = false) {
+    
+    function setLoading(isLoading, isModel = false) {
         sendChatButton.disabled = isLoading;
-        sendImageButton.disabled = isLoading;
-        // Tiež zneaktívni vizuálne tlačidlo nahrávania súboru
-        const uploadVisualButton = document.getElementById('upload-visual-button'); 
-        if (uploadVisualButton) {
-            uploadVisualButton.disabled = isLoading;
-        }
+        send3DModelButton.disabled = isLoading; // ZMENENÉ
         input.disabled = isLoading;
-        imageUploadInput.disabled = isLoading;
         loadingIndicator.classList.toggle('hidden', !isLoading);
         
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (isImage ? 'Generujem/Upravujem obrázok...' : 'Rozmýšľam...')
+            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam...') // ZMENENÉ LOADING TEXT
             : '';
     }
 
     // --- Core API Logic ---
 
-    /** Generuje alebo upravuje obrázok pomocou gemini-2.5-flash-image-preview. */
-    async function generateImageFromPrompt(userPrompt) {
+    /** Generuje kód pre Roblox Command Bar na vytvorenie 3D modelu. */
+    async function generate3DModelCode(userPrompt) {
         
         if (!checkAndApplyRateLimit()) {
              return; 
         }
 
-        const isModification = uploadedImageBase64 !== null;
+        displayMessage(`Požiadavka na 3D model: "${userPrompt}"`, 'user');
+        input.value = '';
         setLoading(true, true); 
 
-        // Inštrukcia pre model
-        const promptInstruction = isModification 
-            ? "Generate a new image based on the provided input image, guided by this detailed instruction. Focus on photorealism and artistic quality:" 
-            : "Highly detailed, photorealistic 16:9 scene, non-commercial and generic style. Focus solely on the description:";
-        
-        const imagePrompt = `${promptInstruction} "${userPrompt}".`;
-
-        // Príprava obsahu pre payload
-        const contentsParts = [{ text: imagePrompt }];
-        
-        // Ak bol nahraný obrázok, pridáme ho do payloadu
-        if (uploadedImageBase64 && uploadedImageMimeType) {
-            contentsParts.push({
-                inlineData: {
-                    mimeType: uploadedImageMimeType,
-                    data: uploadedImageBase64
-                }
-            });
-        }
-
         const payload = {
-            contents: [{
-                role: "user",
-                parts: contentsParts
-            }],
+            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+            systemInstruction: systemInstruction3DModel, 
             generationConfig: {
-                responseModalities: ['TEXT', 'IMAGE'],
-                imageGenerationConfig: {
-                    numberOfImages: 1,
-                    aspectRatio: "16:9",
-                }
-            },
+                temperature: 0.5, // Nižšia teplota pre stabilný kód
+            }
         };
 
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                // Použitie imageApiUrl (gemini-2.5-flash-image-preview)
-                const response = await fetch(imageApiUrl, { 
+                // Použitie hlavného textového modelu pre generovanie kódu
+                const response = await fetch(textApiUrl, { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -616,19 +512,12 @@
 
                 if (!response.ok) {
                     let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
-                    
-                    if (response.status === 400) {
-                        errorMessage = `Chyba 400: Váš popis je pravdepodobne v rozpore s bezpečnostnými pravidlami AI (napr. explicitný obsah, autorské práva, nevhodná téma). Skúste iný, menej kontroverzný popis.`;
-                    } else if (response.status === 429) {
-                        errorMessage = `Chyba 429: Prekročená kvóta. Skúste to neskôr.`;
-                    } else {
-                         try {
-                             const errorBody = await response.json();
-                             if (errorBody && errorBody.error && errorBody.error.message) {
-                                 errorMessage = `API Chyba ${response.status}: ${errorBody.error.message}`;
-                             }
-                        } catch(e) { /* ignore json parse error */ }
-                    }
+                    try {
+                        const errorBody = await response.json();
+                        if (errorBody && errorBody.error && errorBody.error.message) {
+                            errorMessage = `Chyba API: ${errorBody.error.message}`;
+                        }
+                    } catch(e) { /* ignore json parse error */ }
 
                     if (attempt < maxRetries) {
                         console.warn(`Pokus ${attempt} zlyhal, opakujem za chvíľu: ${errorMessage}`);
@@ -639,33 +528,28 @@
                 }
 
                 const result = await response.json();
+                const aiCode = result.candidates?.[0]?.content?.parts?.[0]?.text || "Model neposkytol žiadny kód.";
                 
-                // Extrahovanie Base64 dát z odpovede generateContent
-                const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                // Formátovanie odpovede s inštrukciami a kódovým blokom
+                const responseText = `**Vygenerovaný Roblox Lua Kód:**
+Tento kód je pripravený na skopírovanie a vloženie priamo do **Command Bar** v Roblox Studio.
+
+\`\`\`lua
+${aiCode}
+\`\`\`
+
+**Inštrukcie:**
+1. Otvorte Roblox Studio a váš projekt.
+2. Ak nevidíte konzolu, otvorte **View** a zapnite **Command Bar** alebo stlačte \`F9\` a prejdite na Command Bar.
+3. Skopírujte celý kód vyššie (vrátane \`local model...\`).
+4. Vložte kód do **Command Bar** a stlačte \`Enter\`. Váš model sa objaví v pracovnom priestore (\`game.Workspace\`).`;
                 
-                if (base64Data) {
-                    displayImage(base64Data, userPrompt, isModification); 
-                    
-                    // Po úspešnom vygenerovaní obrázka resetujeme stav nahrávania súboru
-                    if (isModification) {
-                        uploadedImageBase64 = null;
-                        uploadedImageMimeType = null;
-                        imagePreviewDiv.classList.add('hidden');
-                        imageUploadInput.value = ''; // Resetuje file input
-                        imageStatus.textContent = "Nahraný obrázok bol spracovaný. Nahrajte nový pre ďalšiu úpravu.";
-                        imageStatus.className = 'text-xs text-gray-400';
-                        uploadText.textContent = 'Nahrať Súbor';
-                    }
-                    
-                    break;
-                } else {
-                    // Fallback pre textovú odpoveď, ak obrázok nie je k dispozícii
-                    const aiText = result?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || "AI neposkytla žiadnu obrázkovú odpoveď.";
-                    displayMessage(aiText, 'ai');
-                    break; 
-                }
+                displayMessage(responseText, 'ai');
+                speakText("Kód pre 3D model bol vygenerovaný a vložený do chatu.");
+                break;
+                
             } catch (error) {
-                console.error("Chyba počas volania Image API:", error);
+                console.error("Chyba počas volania 3D Model API:", error);
                 if (attempt === maxRetries) {
                     displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
                 }
@@ -690,7 +574,7 @@
         const payload = {
             contents: chatHistory,
             tools: [{ "google_search": {} }],
-            systemInstruction: systemInstruction,
+            systemInstruction: systemInstructionChat,
             generationConfig: {
                 temperature: 0.7, 
             }
@@ -770,58 +654,6 @@
         animate3D();
         checkAndApplyRateLimit(); 
         
-        // Listener pre nahrávanie obrázka
-        imageUploadInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            
-            const initialUploadText = 'Nahrať Súbor';
-            const changeUploadText = 'Nahrané! Zmeniť Súbor';
-
-            if (file) {
-                if (!file.type.startsWith('image/')) {
-                    imageStatus.textContent = "Nahraný súbor nie je obrázok. Skúste PNG alebo JPEG.";
-                    imageStatus.className = 'text-xs text-red-400';
-                    uploadedImageBase64 = null;
-                    imagePreviewDiv.classList.add('hidden');
-                    uploadText.textContent = initialUploadText;
-                    return;
-                }
-                
-                // Max 4MB file size limit
-                if (file.size > 4 * 1024 * 1024) {
-                    imageStatus.textContent = "Súbor je príliš veľký (max 4MB).";
-                    imageStatus.className = 'text-xs text-red-400';
-                    uploadedImageBase64 = null;
-                    imagePreviewDiv.classList.add('hidden');
-                    uploadText.textContent = initialUploadText;
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    // Pre Base64, extrahujeme len dáta po čiarke
-                    const base64String = e.target.result.split(',')[1];
-                    uploadedImageBase64 = base64String;
-                    uploadedImageMimeType = file.type;
-
-                    previewImg.src = e.target.result;
-                    imagePreviewDiv.classList.remove('hidden');
-                    imageStatus.textContent = `Obrázok nahraný: ${file.name}. Popis slúži ako úprava.`;
-                    imageStatus.className = 'text-xs text-green-400';
-                    uploadText.textContent = changeUploadText;
-                };
-                reader.readAsDataURL(file);
-            } else {
-                uploadedImageBase64 = null;
-                uploadedImageMimeType = null;
-                imagePreviewDiv.classList.add('hidden');
-                imageStatus.textContent = "Popis pre úpravu (alebo generovanie) zadajte dole.";
-                imageStatus.className = 'text-xs text-gray-400';
-                uploadText.textContent = initialUploadText;
-            }
-        });
-
-
         // Listener pre tlačidlo CHAT (Odoslať)
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -835,12 +667,12 @@
             sendChatQuery(userQuery);
         });
 
-        // Listener pre tlačidlo OBRÁZOK (Generovať Obrázok)
-        sendImageButton.addEventListener('click', async () => {
+        // Listener pre tlačidlo 3D MODEL (Generovať 3D Model)
+        send3DModelButton.addEventListener('click', async () => {
             const userPrompt = input.value.trim();
             
             if (!userPrompt) {
-                displayMessage("Prosím, zadajte popis obrázku, ktorý chcete vygenerovať alebo použiť na úpravu, do textového poľa.", 'ai');
+                displayMessage("Prosím, zadajte podrobný popis 3D modelu, ktorý má AI vygenerovať v Lua kóde.", 'ai');
                 return;
             }
 
@@ -848,19 +680,13 @@
                 displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
                 return;
             }
-
-            // Zobrazenie promptu ako správy
-            const isModification = uploadedImageBase64 !== null;
-            const actionText = isModification ? "Požiadavka na úpravu" : "Požiadavka na generovanie";
-            displayMessage(`${actionText}: "${userPrompt}"`, 'user');
-            input.value = '';
             
-            await generateImageFromPrompt(userPrompt);
+            await generate3DModelCode(userPrompt);
         });
 
 
         // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj! Model bol aktualizovaný pre Image-to-Image úpravy. Teraz môžete nahrať vlastný obrázok a pomocou textového popisu ho nechať pretransformovať. Pre úpravu nahrajte súbor a potom kliknite na Generovať Obrázok.";
+        const initialMessageText = "Vitaj! Model bol aktualizovaný pre Generovanie 3D modelov v Lua. Zadajte presný popis modelu a kliknite na Generovať 3D Model.";
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
