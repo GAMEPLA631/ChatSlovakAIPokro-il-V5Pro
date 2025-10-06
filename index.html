@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Pokročilý V5 Pro</title>
+    <title>ChatSlovak AI Pokročilý V5 Pro (s Obrázkami)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
@@ -98,6 +98,20 @@
             margin-bottom: 0.5rem;
             line-height: 1.4;
         }
+        .image-container {
+            margin-top: 1rem;
+            text-align: center;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            background-color: #fff;
+        }
+        .generated-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: 0.5rem 0.5rem 0 0;
+        }
     </style>
 </head>
 <body>
@@ -109,7 +123,7 @@
     <!-- Chat Header -->
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
         <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO</h1>
-        <p class="text-sm text-gray-400">Naša spoločnosť GAMEPLA631: Pýtajte sa na veľmi zložité témy. Používa overené dáta (Grounding).</p>
+        <p class="text-sm text-gray-400">Pre textovú odpoveď zadajte text. Pre **obrázok** zadajte: **/obrazok (popis)**.</p>
         <!-- INDIKÁTOR STAVU LIMITU (Kontrola je lokálna cez localStorage, NIE cez databázu Firebase) -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
             Načítavam limit...
@@ -120,19 +134,19 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj v ChatSlovak AI Pokročilý V5 PRO! Model bol teraz aktualizovaný na najvyššiu úroveň výkonu, vďaka čomu zvládne aj tie najkomplexnejšie otázky. Aplikácia nepoužíva žiadnu databázu; limit je kontrolovaný lokálne vo vašom prehliadači.</p>
+            <p>Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede (**Gemini 2.5 Pro**) a generovanie obrázkov (**Imagen 3.0**).</p>
         </div>
     </div>
 
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="hidden">
-        <div class="animate-pulse">Rozmýšľam Pre lepšiu odpoveď čakaj 90s</div>
+        <div class="animate-pulse">Rozmýšľam...</div>
     </div>
 
     <!-- Input Form -->
     <form id="chat-form" class="p-4 border-t border-gray-200 chat-footer">
         <div class="flex space-x-3">
-            <input type="text" id="user-input" placeholder="Zadajte svoju zložité požiadavku..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            <input type="text" id="user-input" placeholder="Zadajte /obrazok alebo svoju otázku..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
             <button type="submit" id="send-button" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center justify-center disabled:bg-blue-400">
                 Odoslať
             </button>
@@ -367,9 +381,14 @@
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Používame Gemini 2.5 PRO pre maximálny výkon.
-    const modelName = 'gemini-2.5-pro'; 
-    const apiUrl = `${apiUrlBase}${modelName}:generateContent?key=${apiKey}`;
+    // Konfigurácia pre text (Gemini 2.5 Pro)
+    const textModelName = 'gemini-2.5-pro'; 
+    const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
+
+    // Konfigurácia pre obrázky (Imagen 3.0)
+    const imageModelName = 'imagen-3.0-generate-002';
+    const imageApiUrl = `${apiUrlBase}${imageModelName}:predict?key=${apiKey}`;
+
 
     const systemInstruction = {
         parts: [{ 
@@ -421,10 +440,48 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
+    function displayImage(base64Data, prompt) {
+        const bubble = document.createElement('div');
+        bubble.className = `message-bubble ai-message w-full max-w-lg mx-auto`;
+        
+        const imageContainer = document.createElement('div');
+        imageContainer.className = 'image-container';
+
+        const image = document.createElement('img');
+        image.src = `data:image/png;base64,${base64Data}`;
+        image.alt = `Generovaný obrázok: ${prompt}`;
+        image.className = 'generated-image';
+
+        const downloadLink = document.createElement('a');
+        downloadLink.href = image.src;
+        downloadLink.download = `generovany_obrazok_${Date.now()}.png`;
+        downloadLink.className = 'block w-full bg-blue-600 text-white p-2 text-center hover:bg-blue-700 transition duration-150 rounded-b-lg';
+        downloadLink.textContent = 'Stiahnuť obrázok (vysoká kvalita)';
+
+        const description = document.createElement('p');
+        description.className = 'text-xs text-gray-500 p-2 italic';
+        description.textContent = `Generovaný obrázok na základe popisu: "${prompt}"`;
+
+
+        imageContainer.appendChild(image);
+        imageContainer.appendChild(downloadLink);
+        
+        bubble.appendChild(description);
+        bubble.appendChild(imageContainer);
+
+
+        messagesDiv.appendChild(bubble);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        speakText("Obrázok bol úspešne vygenerovaný a je pripravený na stiahnutie.");
+    }
+
     function setLoading(isLoading) {
         sendButton.disabled = isLoading;
         input.disabled = isLoading;
         loadingIndicator.classList.toggle('hidden', !isLoading);
+        loadingIndicator.querySelector('div').textContent = isLoading 
+            ? (input.value.startsWith('/obrazok') ? 'Generujem obrázok...' : 'Rozmýšľam...')
+            : '';
     }
 
     // --- Core API Logic ---
@@ -436,7 +493,62 @@
         return new Promise(resolve => setTimeout(resolve, currentDelay));
     }
 
-    /** Spracuje odoslanie formulára a zavolá Gemini API. */
+    /** Generuje obrázok pomocou Imagen 3.0. */
+    async function generateImage(userPrompt) {
+        setLoading(true);
+
+        // Pomocný prompt pre zabezpečenie, že text je dominantný
+        const imagePrompt = `High-resolution, clear, and prominent typography featuring the text: "${userPrompt}". Style and color based on the user's description. The final image should be clean and aesthetically pleasing.`;
+
+        const payload = {
+            instances: { 
+                prompt: imagePrompt 
+            },
+            parameters: { 
+                "sampleCount": 1,
+                "aspectRatio": "1:1" // Vysoké rozlíšenie 1536x1536
+            }
+        };
+
+        const maxRetries = 3;
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const response = await fetch(imageApiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
+                    throw new Error(errorMessage);
+                }
+
+                const result = await response.json();
+                const base64Data = result.predictions?.[0]?.bytesBase64Encoded;
+                
+                if (base64Data) {
+                    displayImage(base64Data, userPrompt);
+                    break;
+                } else {
+                    displayMessage("AI neposkytla žiadnu obrázkovú odpoveď. (Prázdna odpoveď od Imagen API)", 'ai');
+                    break; 
+                }
+            } catch (error) {
+                console.error("Chyba počas volania Imagen API:", error);
+                
+                if (attempt < maxRetries) {
+                    await delay(attempt);
+                    continue;
+                }
+                displayMessage(`Kritická chyba pri generovaní obrázku po ${maxRetries} pokusoch: ${error.message}`, 'ai');
+            }
+        }
+        setLoading(false);
+    }
+
+
+    /** Spracuje odoslanie formulára a zavolá príslušné API (Text alebo Obrázok). */
     async function sendMessage(event) {
         event.preventDefault();
         const userQuery = input.value.trim();
@@ -453,7 +565,7 @@
             input.placeholder = "LIMIT VYČERPANÝ! Skúste to prosím neskôr.";
             input.classList.add('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
             setTimeout(() => {
-                input.placeholder = "Zadajte svoju zložité požiadavku...";
+                input.placeholder = "Zadajte /obrazok alebo svoju otázku...";
                 input.classList.remove('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
             }, 3000);
             input.value = ''; 
@@ -461,16 +573,28 @@
         }
 
         displayMessage(userQuery, 'user');
-        chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
         input.value = '';
+        
+        
+        // ZISTENIE, ČI IDE O GENERÁCIU OBRÁZKA
+        if (userQuery.toLowerCase().startsWith('/obrazok')) {
+            const imagePrompt = userQuery.substring('/obrazok'.length).trim();
+            if (imagePrompt) {
+                await generateImage(imagePrompt);
+            } else {
+                displayMessage("Prosím, zadajte popis obrázku po príkaze /obrazok. Napr.: /obrazok modrý drak letiaci nad horami", 'ai');
+            }
+            return; 
+        }
+
+        // AK NIE JE PRÍKAZ NA OBRÁZOK, POUŽIJE SA TEXTOVÝ CHAT (Gemini 2.5 Pro)
+        chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
         setLoading(true);
 
         const payload = {
             contents: chatHistory,
             tools: [{ "google_search": {} }],
             systemInstruction: systemInstruction,
-            
-            // Konfigurácia generovania
             generationConfig: {
                 temperature: 0.7, 
             }
@@ -479,7 +603,7 @@
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const response = await fetch(apiUrl, {
+                const response = await fetch(textApiUrl, { // Použitie textApiUrl
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -554,7 +678,7 @@
         form.addEventListener('submit', sendMessage);
 
         // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj v ChatSlovak AI Pokročilý V5 PRO! Model bol teraz aktualizovaný na najvyššiu úroveň výkonu, vďaka čomu zvládne aj tie najkomplexnejšie otázky. Aplikácia nepoužíva žiadnu databázu; limit je kontrolovaný lokálne vo vašom prehliadači.";
+        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede a generovanie obrázkov. Ak chcete vytvoriť obrázok, zadajte príkaz /obrazok nasledovaný popisom.";
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
@@ -569,6 +693,7 @@
 </script>
 </body>
 </html>
+
 
 
 
