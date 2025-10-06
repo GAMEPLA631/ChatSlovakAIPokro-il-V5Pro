@@ -127,6 +127,18 @@
                 width: 100%;
             }
         }
+        
+        /* Špecifický štýl pre neviditeľný input[file], ktorý je umiestnený nad vizuálnym tlačidlom */
+        #image-upload-wrapper input[type="file"] {
+            /* Skrytie predvoleného vzhľadu */
+            opacity: 0;
+            /* Zabezpečí, že zaberá celú plochu vizuálneho tlačidla pod ním */
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            z-index: 10; 
+        }
     </style>
 </head>
 <body>
@@ -137,8 +149,8 @@
 <div id="chat-container">
     <!-- Chat Header -->
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
-        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO</h1>
-        <p class="text-sm text-gray-400">Pre textovú odpoveď použite **Odoslať**. Pre obrázok (16:9) použite **Generovať Obrázok**.</p>
+        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Image-to-Image)</h1>
+        <p class="text-sm text-gray-400">**Nová funkcia:** Nahrajte obrázok pre jeho úpravu pomocou popisu, alebo nechajte pole prázdne pre generovanie od základu.</p>
         <!-- INDIKÁTOR STAVU LIMITU (Kontrola je lokálna cez localStorage, NIE cez databázu Firebase) -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
             Načítavam limit...
@@ -149,7 +161,7 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol teraz aktualizovaný. Ak chcete vytvoriť obrázok vo formáte **16:9** s textom, zadajte popis do poľa a kliknite na tlačidlo **Generovať Obrázok**.</p>
+            <p>Vitaj! Model bol aktualizovaný pre **Image-to-Image** úpravy. Teraz môžete nahrať vlastný obrázok a pomocou textového popisu ho nechať pretransformovať. Pre úpravu **nahrajte súbor** a potom kliknite na **Generovať Obrázok**.</p>
         </div>
     </div>
 
@@ -158,18 +170,39 @@
         <div class="animate-pulse">Rozmýšľam...</div>
     </div>
 
-    <!-- Input Form s dvoma tlačidlami -->
-    <form id="chat-form" class="p-4 border-t border-gray-200 chat-footer">
+    <!-- Input Form s troma tlačidlami -->
+    <form id="chat-form" class="p-4 chat-footer">
+        
+        <!-- NOVÉ UMIESTNENIE: Sekcia pre náhľad a status (teraz hore) -->
+        <div class="flex items-center gap-2 mb-3">
+             <div id="image-preview" class="hidden h-16 w-16 rounded-lg overflow-hidden border-2 border-indigo-400 p-1 bg-white flex-shrink-0">
+                <img id="preview-img" class="object-cover w-full h-full" alt="Náhľad nahraného obrázku">
+            </div>
+             <p id="image-status" class="text-xs text-gray-400">Popis pre úpravu (alebo generovanie) zadajte dole.</p>
+        </div>
+
         <div class="flex space-x-3">
-            <input type="text" id="user-input" placeholder="Zadajte text pre chat alebo popis pre obrázok..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            <input type="text" id="user-input" placeholder="Zadajte popis pre generovanie alebo úpravu..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
             
             <div class="button-group">
-                <!-- Nové tlačidlo pre generovanie obrázka (typ="button" aby sa nespúšťal submit) -->
+                <!-- Tlačidlo pre nahrávanie súboru (teraz ako prvé tlačidlo v skupine) -->
+                <div id="image-upload-wrapper" class="relative min-w-max">
+                    <input type="file" id="image-upload" accept="image/png, image/jpeg">
+                    <!-- Tlačidlo s vizuálnym štýlom (len vizuál) -->
+                    <button type="button" id="upload-visual-button" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-150 flex items-center justify-center min-w-max h-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd" />
+                        </svg>
+                        <span id="upload-text">Nahrať Súbor</span>
+                    </button>
+                </div>
+
+                <!-- Tlačidlo pre generovanie obrázka -->
                 <button type="button" id="send-image-button" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center justify-center disabled:bg-indigo-400 min-w-max">
                     Generovať Obrázok
                 </button>
                 
-                <!-- Pôvodné tlačidlo pre chat (typ="submit") -->
+                <!-- Tlačidlo pre chat -->
                 <button type="submit" id="send-chat-button" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center justify-center disabled:bg-blue-400 min-w-max">
                     Odoslať
                 </button>
@@ -271,7 +304,6 @@
     }
 
     // --- Rate Limiting Configuration ---
-    // Táto časť používa LOKÁLNE úložisko (localStorage), NIE databázu Firebase.
     const MAX_MESSAGES_PER_HOUR = 30; 
     const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; 
     const STORAGE_KEY = 'chatSlovakMessageTimestamps';
@@ -279,19 +311,15 @@
     /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia zostávajúce správy. */
     function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
-        
-        // Filtruje časové pečiatky len v rámci poslednej hodiny
         const recentTimestamps = currentTimestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
-        
         const messagesSent = recentTimestamps.length;
         const messagesRemaining = MAX_MESSAGES_PER_HOUR - messagesSent;
 
         const limitStatusElement = document.getElementById('limit-status');
         
         if (messagesRemaining <= 0) {
-            // Zistíme čas do resetu na základe najstaršej správy v poslednej hodine
             const timeUntilResetMs = recentTimestamps.length > 0 
-                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps.sort((a, b) => a - b)[0]) // Sort pre najstaršiu
+                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps.sort((a, b) => a - b)[0])
                 : 0; 
             
             const minutes = Math.floor(timeUntilResetMs / 60000);
@@ -306,7 +334,6 @@
             return messagesRemaining;
         }
     }
-
 
     /**
      * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
@@ -330,7 +357,6 @@
         }
 
         let recentTimestamps = timestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
-
         const messagesRemaining = updateLimitStatusDisplay(recentTimestamps);
 
         if (messagesRemaining > 0) {
@@ -357,7 +383,6 @@
         voices = synth.getVoices();
     }
 
-    // Načítanie dostupných hlasov
     if (synth.onvoiceschanged !== undefined) {
         synth.onvoiceschanged = populateVoiceList;
     } else {
@@ -367,39 +392,28 @@
     function speakText(text) {
         if (!synth || !text) return;
         
-        // Zastavenie predošlého hovorenia
         if (synth.speaking) {
             synth.cancel();
         }
 
-        // Odstránenie značiek Markdown (tučné písmo) pre lepší zážitok z hovorenia
         const cleanText = text.replace(/\*\*/g, '').replace(/###\s*/g, ''); 
-
         const utterance = new SpeechSynthesisUtterance(cleanText);
 
-        // 1. Prioritne nájdeme slovenský hlas
         let selectedVoice = voices.find(voice => voice.lang.startsWith('sk-SK'));
-
-        // 2. Ak slovenský nie je, hľadáme nejaký pekný anglický (často Google)
         if (!selectedVoice) {
             selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en'));
         }
-        
-        // 3. Fallback na prvý dostupný hlas
         if (!selectedVoice) {
             selectedVoice = voices[0];
         }
 
-        // Aplikácia vybraného hlasu
         if (selectedVoice) {
             utterance.voice = selectedVoice;
             utterance.lang = selectedVoice.lang;
         } else {
-             // Nastavíme aspoň slovenský jazyk, aby prehliadač vybral default SK/CZ hlas
             utterance.lang = 'sk-SK'; 
         }
 
-        // Príjemné nastavenie rýchlosti a výšky
         utterance.rate = 1.0; 
         utterance.pitch = 1.0; 
 
@@ -416,10 +430,13 @@
     const textModelName = 'gemini-2.5-pro'; 
     const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
 
-    // Konfigurácia pre obrázky (Imagen 3.0)
-    const imageModelName = 'imagen-3.0-generate-002';
-    const imageApiUrl = `${apiUrlBase}${imageModelName}:predict?key=${apiKey}`;
-
+    // Konfigurácia pre obrázky (teraz Image-to-Image / Editácia)
+    const imageModelName = 'gemini-2.5-flash-image-preview'; // ZMENENÉ pre Image-to-Image/Editáciu
+    const imageApiUrl = `${apiUrlBase}${imageModelName}:generateContent?key=${apiKey}`; // ZMENENÉ - používa generateContent
+    
+    // Globálne pre Base64 dát a MIME type nahraného obrázku
+    let uploadedImageBase64 = null;
+    let uploadedImageMimeType = null;
 
     const systemInstruction = {
         parts: [{ 
@@ -434,6 +451,12 @@
     const sendChatButton = document.getElementById('send-chat-button');
     const sendImageButton = document.getElementById('send-image-button');
     const loadingIndicator = document.getElementById('loading-indicator');
+    const imageUploadInput = document.getElementById('image-upload');
+    const imagePreviewDiv = document.getElementById('image-preview');
+    const previewImg = document.getElementById('preview-img');
+    const imageStatus = document.getElementById('image-status');
+    const uploadText = document.getElementById('upload-text');
+
 
     // --- Utility Functions ---
 
@@ -481,7 +504,7 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    function displayImage(base64Data, prompt) {
+    function displayImage(base64Data, prompt, isModification) {
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ai-message w-full max-w-lg mx-auto`;
         
@@ -495,14 +518,15 @@
 
         const downloadLink = document.createElement('a');
         downloadLink.href = image.src;
-        // Nastavenie mena súboru pre stiahnutie
         downloadLink.download = `obrazok_16x9_${Date.now()}.png`; 
         downloadLink.className = 'block w-full bg-blue-600 text-white p-2 text-center hover:bg-blue-700 transition duration-150 rounded-b-lg';
         downloadLink.textContent = 'Stiahnuť obrázok (vysoká kvalita)';
 
         const description = document.createElement('p');
         description.className = 'text-xs text-gray-500 p-2 italic';
-        description.textContent = `Generovaný obrázok (16:9) na základe popisu: "${prompt}"`;
+        description.textContent = isModification 
+            ? `Upravený obrázok (16:9) na základe popisu: "${prompt}"`
+            : `Generovaný obrázok (16:9) na základe popisu: "${prompt}"`;
 
 
         imageContainer.appendChild(image);
@@ -514,48 +538,77 @@
 
         messagesDiv.appendChild(bubble);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        speakText("Obrázok bol úspešne vygenerovaný a je pripravený na stiahnutie.");
+        speakText(isModification ? "Obrázok bol úspešne upravený a je pripravený na stiahnutie." : "Obrázok bol úspešne vygenerovaný a je pripravený na stiahnutie.");
     }
 
     function setLoading(isLoading, isImage = false) {
         sendChatButton.disabled = isLoading;
         sendImageButton.disabled = isLoading;
+        // Tiež zneaktívni vizuálne tlačidlo nahrávania súboru
+        const uploadVisualButton = document.getElementById('upload-visual-button'); 
+        if (uploadVisualButton) {
+            uploadVisualButton.disabled = isLoading;
+        }
         input.disabled = isLoading;
+        imageUploadInput.disabled = isLoading;
         loadingIndicator.classList.toggle('hidden', !isLoading);
         
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (isImage ? 'Generujem obrázok...' : 'Rozmýšľam...')
+            ? (isImage ? 'Generujem/Upravujem obrázok...' : 'Rozmýšľam...')
             : '';
     }
 
     // --- Core API Logic ---
 
-    /** Generuje obrázok pomocou Imagen 3.0. */
+    /** Generuje alebo upravuje obrázok pomocou gemini-2.5-flash-image-preview. */
     async function generateImageFromPrompt(userPrompt) {
         
         if (!checkAndApplyRateLimit()) {
              return; 
         }
 
+        const isModification = uploadedImageBase64 !== null;
         setLoading(true, true); 
 
-        // Pomocný prompt pre lepšiu kvalitu, ale s menším dôrazom na text, aby nebol príliš reštriktívny
-        const imagePrompt = `Wide-screen 16:9 cinematic photo of: "${userPrompt}". High detail, photorealistic.`;
+        // Inštrukcia pre model
+        const promptInstruction = isModification 
+            ? "Generate a new image based on the provided input image, guided by this detailed instruction. Focus on photorealism and artistic quality:" 
+            : "Highly detailed, photorealistic 16:9 scene, non-commercial and generic style. Focus solely on the description:";
+        
+        const imagePrompt = `${promptInstruction} "${userPrompt}".`;
+
+        // Príprava obsahu pre payload
+        const contentsParts = [{ text: imagePrompt }];
+        
+        // Ak bol nahraný obrázok, pridáme ho do payloadu
+        if (uploadedImageBase64 && uploadedImageMimeType) {
+            contentsParts.push({
+                inlineData: {
+                    mimeType: uploadedImageMimeType,
+                    data: uploadedImageBase64
+                }
+            });
+        }
 
         const payload = {
-            instances: { 
-                prompt: imagePrompt 
+            contents: [{
+                role: "user",
+                parts: contentsParts
+            }],
+            generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+                imageGenerationConfig: {
+                    numberOfImages: 1,
+                    aspectRatio: "16:9",
+                }
             },
-            parameters: { 
-                "sampleCount": 1,
-                "aspectRatio": "16:9" // ŠIROKOUHLÝ FORMÁT
-            }
         };
 
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const response = await fetch(imageApiUrl, {
+                // Použitie imageApiUrl (gemini-2.5-flash-image-preview)
+                const response = await fetch(imageApiUrl, { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -569,8 +622,7 @@
                     } else if (response.status === 429) {
                         errorMessage = `Chyba 429: Prekročená kvóta. Skúste to neskôr.`;
                     } else {
-                         // Pokus o získanie podrobnejšej chyby
-                        try {
+                         try {
                              const errorBody = await response.json();
                              if (errorBody && errorBody.error && errorBody.error.message) {
                                  errorMessage = `API Chyba ${response.status}: ${errorBody.error.message}`;
@@ -587,17 +639,33 @@
                 }
 
                 const result = await response.json();
-                const base64Data = result.predictions?.[0]?.bytesBase64Encoded;
+                
+                // Extrahovanie Base64 dát z odpovede generateContent
+                const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                 
                 if (base64Data) {
-                    displayImage(base64Data, userPrompt);
+                    displayImage(base64Data, userPrompt, isModification); 
+                    
+                    // Po úspešnom vygenerovaní obrázka resetujeme stav nahrávania súboru
+                    if (isModification) {
+                        uploadedImageBase64 = null;
+                        uploadedImageMimeType = null;
+                        imagePreviewDiv.classList.add('hidden');
+                        imageUploadInput.value = ''; // Resetuje file input
+                        imageStatus.textContent = "Nahraný obrázok bol spracovaný. Nahrajte nový pre ďalšiu úpravu.";
+                        imageStatus.className = 'text-xs text-gray-400';
+                        uploadText.textContent = 'Nahrať Súbor';
+                    }
+                    
                     break;
                 } else {
-                    displayMessage("AI neposkytla žiadnu obrázkovú odpoveď. (Prázdna odpoveď od Imagen API)", 'ai');
+                    // Fallback pre textovú odpoveď, ak obrázok nie je k dispozícii
+                    const aiText = result?.candidates?.[0]?.content?.parts?.find(p => p.text)?.text || "AI neposkytla žiadnu obrázkovú odpoveď.";
+                    displayMessage(aiText, 'ai');
                     break; 
                 }
             } catch (error) {
-                console.error("Chyba počas volania Imagen API:", error);
+                console.error("Chyba počas volania Image API:", error);
                 if (attempt === maxRetries) {
                     displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
                 }
@@ -606,7 +674,7 @@
         setLoading(false);
     }
     
-    /** Spracuje odoslanie textovej chatovej otázky. */
+    /** Spracuje odoslanie textovej chatovej otázky. (Bezo zmeny) */
     async function sendChatQuery(userQuery) {
         
         if (!checkAndApplyRateLimit()) {
@@ -617,7 +685,7 @@
         input.value = '';
 
         chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
-        setLoading(true, false); // false = not image
+        setLoading(true, false); 
 
         const payload = {
             contents: chatHistory,
@@ -702,7 +770,59 @@
         animate3D();
         checkAndApplyRateLimit(); 
         
-        // Listener pre tlačidlo CHAT (Odoslať) - spúšťa sa formulárom (typ="submit")
+        // Listener pre nahrávanie obrázka
+        imageUploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            
+            const initialUploadText = 'Nahrať Súbor';
+            const changeUploadText = 'Nahrané! Zmeniť Súbor';
+
+            if (file) {
+                if (!file.type.startsWith('image/')) {
+                    imageStatus.textContent = "Nahraný súbor nie je obrázok. Skúste PNG alebo JPEG.";
+                    imageStatus.className = 'text-xs text-red-400';
+                    uploadedImageBase64 = null;
+                    imagePreviewDiv.classList.add('hidden');
+                    uploadText.textContent = initialUploadText;
+                    return;
+                }
+                
+                // Max 4MB file size limit
+                if (file.size > 4 * 1024 * 1024) {
+                    imageStatus.textContent = "Súbor je príliš veľký (max 4MB).";
+                    imageStatus.className = 'text-xs text-red-400';
+                    uploadedImageBase64 = null;
+                    imagePreviewDiv.classList.add('hidden');
+                    uploadText.textContent = initialUploadText;
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Pre Base64, extrahujeme len dáta po čiarke
+                    const base64String = e.target.result.split(',')[1];
+                    uploadedImageBase64 = base64String;
+                    uploadedImageMimeType = file.type;
+
+                    previewImg.src = e.target.result;
+                    imagePreviewDiv.classList.remove('hidden');
+                    imageStatus.textContent = `Obrázok nahraný: ${file.name}. Popis slúži ako úprava.`;
+                    imageStatus.className = 'text-xs text-green-400';
+                    uploadText.textContent = changeUploadText;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                uploadedImageBase64 = null;
+                uploadedImageMimeType = null;
+                imagePreviewDiv.classList.add('hidden');
+                imageStatus.textContent = "Popis pre úpravu (alebo generovanie) zadajte dole.";
+                imageStatus.className = 'text-xs text-gray-400';
+                uploadText.textContent = initialUploadText;
+            }
+        });
+
+
+        // Listener pre tlačidlo CHAT (Odoslať)
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             const userQuery = input.value.trim();
@@ -715,12 +835,12 @@
             sendChatQuery(userQuery);
         });
 
-        // Listener pre tlačidlo OBRÁZOK (Generovať Obrázok) - spúšťa sa kliknutím (typ="button")
+        // Listener pre tlačidlo OBRÁZOK (Generovať Obrázok)
         sendImageButton.addEventListener('click', async () => {
             const userPrompt = input.value.trim();
             
             if (!userPrompt) {
-                displayMessage("Prosím, zadajte popis obrázku, ktorý chcete vygenerovať, do textového poľa.", 'ai');
+                displayMessage("Prosím, zadajte popis obrázku, ktorý chcete vygenerovať alebo použiť na úpravu, do textového poľa.", 'ai');
                 return;
             }
 
@@ -730,7 +850,9 @@
             }
 
             // Zobrazenie promptu ako správy
-            displayMessage(`Požiadavka na obrázok: "${userPrompt}"`, 'user');
+            const isModification = uploadedImageBase64 !== null;
+            const actionText = isModification ? "Požiadavka na úpravu" : "Požiadavka na generovanie";
+            displayMessage(`${actionText}: "${userPrompt}"`, 'user');
             input.value = '';
             
             await generateImageFromPrompt(userPrompt);
@@ -738,17 +860,15 @@
 
 
         // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný. Ak chcete vytvoriť obrázok vo formáte 16:9 s textom, zadajte popis do poľa a kliknite na tlačidlo Generovať Obrázok.";
+        const initialMessageText = "Vitaj! Model bol aktualizovaný pre Image-to-Image úpravy. Teraz môžete nahrať vlastný obrázok a pomocou textového popisu ho nechať pretransformovať. Pre úpravu nahrajte súbor a potom kliknite na Generovať Obrázok.";
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
-                // Speak the initial message only if it hasn't been spoken yet
                 if (messagesDiv.children.length === 1) { 
                      speakText(initialMessageText);
                 }
             };
         } else {
-            // Fallback pre rýchlejšie prehliadače
             setTimeout(() => {
                 if (messagesDiv.children.length === 1) { 
                      speakText(initialMessageText);
@@ -760,6 +880,7 @@
 </script>
 </body>
 </html>
+
 
 
 
