@@ -438,8 +438,21 @@
         const userQuery = input.value.trim();
         if (!userQuery) return;
 
-        // KONTROLA LIMITU: Terajší kód kontroluje a aplikuje limit
+        // KONTROLA API KĽÚČA
+        if (!apiKey) {
+            displayMessage("CHYBA: API kľúč nie je nastavený. Nemôžem odoslať požiadavku. (Chyba: Nedostatočná autorizácia)", 'ai');
+            return;
+        }
+
+        // KONTROLA LIMITU: Ak je limit prekročený, zastaví odoslanie a poskytne vizuálnu spätnú väzbu.
         if (!checkAndApplyRateLimit()) {
+            // Vizuálna spätná väzba pre používateľa, že limit bol prekročený
+            input.placeholder = "LIMIT VYČERPANÝ! Skúste to prosím neskôr.";
+            input.classList.add('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
+            setTimeout(() => {
+                input.placeholder = "Zadajte svoju zložité požiadavku...";
+                input.classList.remove('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
+            }, 3000); // Reset placeholder po 3 sekundách
             input.value = ''; 
             return;
         }
@@ -471,14 +484,27 @@
                 });
 
                 if (!response.ok) {
-                    // Ak je chyba, skúsiť znova (ak to nie je posledný pokus)
+                    // --- KRITICKÉ VYLEPŠENIE CHYBOVÉHO HLÁSENIA ---
+                    let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
+                    try {
+                        const errorBody = await response.json();
+                        // Skúsime nájsť presnejšiu správu od API
+                        if (errorBody && errorBody.error && errorBody.error.message) {
+                            errorMessage = `Chyba API: ${errorBody.error.message}`;
+                        }
+                    } catch (e) {
+                        // Ak sa nepodarí parsovať JSON, použijeme len status
+                        errorMessage = `HTTP chyba so statusom ${response.status}. Nepodarilo sa získať detail chyby.`;
+                    }
+
+                    // Zobrazenie kritickej chyby používateľovi
+                    displayMessage(`KRITICKÝ PROBLÉM: ${errorMessage} Skontrolujte, prosím, svoj API kľúč a kvótu.`, 'ai');
+                    
                     if (attempt < maxRetries) {
                         await delay(attempt);
                         continue;
                     }
-                    // Pridanie logovania pre lepšiu diagnostiku
-                    console.error("API Error Response Status:", response.status, "Text:", await response.text());
-                    throw new Error(`HTTP chyba: ${response.status}`);
+                    throw new Error(`Kritická chyba po opakovaných pokusoch: ${errorMessage}`);
                 }
 
                 const result = await response.json();
@@ -507,7 +533,7 @@
                     break; 
 
                 } else {
-                    displayMessage("AI neposkytla žiadnu odpoveď. Skúste preformulovať otázku.", 'ai');
+                    displayMessage("AI neposkytla žiadnu odpoveď. Skúste preformulovať otázku. (Prázdna odpoveď od modelu)", 'ai');
                 }
             } catch (error) {
                 console.error("Chyba počas volania API:", error);
