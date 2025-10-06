@@ -110,7 +110,9 @@
             max-width: 100%;
             height: auto;
             display: block;
-            border-radius: 0.5rem 0.5rem 0 0;
+            /* Zabezpečí, že 16:9 obrázok sa v kontajneri zobrazí správne bez skreslenia */
+            aspect-ratio: 16 / 9; 
+            object-fit: contain; 
         }
     </style>
 </head>
@@ -134,7 +136,7 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede (**Gemini 2.5 Pro**) a generovanie obrázkov (**Imagen 3.0**).</p>
+            <p>Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede (**Gemini 2.5 Pro**) a generovanie obrázkov (**Imagen 3.0**). Obrázky sa generujú vo formáte **16:9** a dajú sa stiahnuť.</p>
         </div>
     </div>
 
@@ -454,13 +456,14 @@
 
         const downloadLink = document.createElement('a');
         downloadLink.href = image.src;
-        downloadLink.download = `generovany_obrazok_${Date.now()}.png`;
+        // Nastavenie mena súboru pre stiahnutie
+        downloadLink.download = `obrazok_16x9_${Date.now()}.png`; 
         downloadLink.className = 'block w-full bg-blue-600 text-white p-2 text-center hover:bg-blue-700 transition duration-150 rounded-b-lg';
         downloadLink.textContent = 'Stiahnuť obrázok (vysoká kvalita)';
 
         const description = document.createElement('p');
         description.className = 'text-xs text-gray-500 p-2 italic';
-        description.textContent = `Generovaný obrázok na základe popisu: "${prompt}"`;
+        description.textContent = `Generovaný obrázok (16:9) na základe popisu: "${prompt}"`;
 
 
         imageContainer.appendChild(image);
@@ -479,8 +482,9 @@
         sendButton.disabled = isLoading;
         input.disabled = isLoading;
         loadingIndicator.classList.toggle('hidden', !isLoading);
+        // Upravená podmienka pre zobrazenie "Generujem obrázok..."
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (input.value.startsWith('/obrazok') ? 'Generujem obrázok...' : 'Rozmýšľam...')
+            ? (input.value.toLowerCase().startsWith('/obrazok') ? 'Generujem obrázok...' : 'Rozmýšľam...')
             : '';
     }
 
@@ -497,8 +501,8 @@
     async function generateImage(userPrompt) {
         setLoading(true);
 
-        // Pomocný prompt pre zabezpečenie, že text je dominantný
-        const imagePrompt = `High-resolution, clear, and prominent typography featuring the text: "${userPrompt}". Style and color based on the user's description. The final image should be clean and aesthetically pleasing.`;
+        // Pomocný prompt pre zabezpečenie, že text je dominantný a estetický
+        const imagePrompt = `High-resolution, clear, and prominent typography featuring the text: "${userPrompt}". Style and color based on the user's description. The final image should be a cinematic, aesthetically pleasing, wide-screen 16:9 composition.`;
 
         const payload = {
             instances: { 
@@ -506,7 +510,7 @@
             },
             parameters: { 
                 "sampleCount": 1,
-                "aspectRatio": "1:1" // Vysoké rozlíšenie 1536x1536
+                "aspectRatio": "16:9" // ZMENA NA ŠIROKOUHLÝ FORMÁT 16:9
             }
         };
 
@@ -678,7 +682,7 @@
         form.addEventListener('submit', sendMessage);
 
         // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede a generovanie obrázkov. Ak chcete vytvoriť obrázok, zadajte príkaz /obrazok nasledovaný popisom.";
+        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede a generovanie obrázkov. Ak chcete vytvoriť obrázok vo formáte 16:9 s textom, zadajte príkaz /obrazok nasledovaný popisom.";
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
@@ -693,6 +697,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
