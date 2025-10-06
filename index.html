@@ -114,6 +114,19 @@
             aspect-ratio: 16 / 9; 
             object-fit: contain; 
         }
+        /* Responsívny layout tlačidiel */
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+        @media (max-width: 640px) {
+            .button-group {
+                flex-direction: column; 
+            }
+            .button-group button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -125,7 +138,7 @@
     <!-- Chat Header -->
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
         <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO</h1>
-        <p class="text-sm text-gray-400">Pre textovú odpoveď zadajte text. Pre **obrázok** zadajte: **/obrazok (popis)**.</p>
+        <p class="text-sm text-gray-400">Pre textovú odpoveď použite **Odoslať**. Pre obrázok (16:9) použite **Generovať Obrázok**.</p>
         <!-- INDIKÁTOR STAVU LIMITU (Kontrola je lokálna cez localStorage, NIE cez databázu Firebase) -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
             Načítavam limit...
@@ -136,7 +149,7 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede (**Gemini 2.5 Pro**) a generovanie obrázkov (**Imagen 3.0**). Obrázky sa generujú vo formáte **16:9** a dajú sa stiahnuť.</p>
+            <p>Vitaj! Model bol teraz aktualizovaný. Ak chcete vytvoriť obrázok vo formáte **16:9** s textom, zadajte popis do poľa a kliknite na tlačidlo **Generovať Obrázok**.</p>
         </div>
     </div>
 
@@ -145,13 +158,22 @@
         <div class="animate-pulse">Rozmýšľam...</div>
     </div>
 
-    <!-- Input Form -->
+    <!-- Input Form s dvoma tlačidlami -->
     <form id="chat-form" class="p-4 border-t border-gray-200 chat-footer">
         <div class="flex space-x-3">
-            <input type="text" id="user-input" placeholder="Zadajte /obrazok alebo svoju otázku..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-            <button type="submit" id="send-button" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center justify-center disabled:bg-blue-400">
-                Odoslať
-            </button>
+            <input type="text" id="user-input" placeholder="Zadajte text pre chat alebo popis pre obrázok..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+            
+            <div class="button-group">
+                <!-- Nové tlačidlo pre generovanie obrázka (typ="button" aby sa nespúšťal submit) -->
+                <button type="button" id="send-image-button" class="bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center justify-center disabled:bg-indigo-400 min-w-max">
+                    Generovať Obrázok
+                </button>
+                
+                <!-- Pôvodné tlačidlo pre chat (typ="submit") -->
+                <button type="submit" id="send-chat-button" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center justify-center disabled:bg-blue-400 min-w-max">
+                    Odoslať
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -402,7 +424,8 @@
     const messagesDiv = document.getElementById('messages');
     const form = document.getElementById('chat-form');
     const input = document.getElementById('user-input');
-    const sendButton = document.getElementById('send-button');
+    const sendChatButton = document.getElementById('send-chat-button');
+    const sendImageButton = document.getElementById('send-image-button');
     const loadingIndicator = document.getElementById('loading-indicator');
 
     // --- UI Functions ---
@@ -478,13 +501,14 @@
         speakText("Obrázok bol úspešne vygenerovaný a je pripravený na stiahnutie.");
     }
 
-    function setLoading(isLoading) {
-        sendButton.disabled = isLoading;
+    function setLoading(isLoading, isImage = false) {
+        sendChatButton.disabled = isLoading;
+        sendImageButton.disabled = isLoading;
         input.disabled = isLoading;
         loadingIndicator.classList.toggle('hidden', !isLoading);
-        // Upravená podmienka pre zobrazenie "Generujem obrázok..."
+        
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (input.value.toLowerCase().startsWith('/obrazok') ? 'Generujem obrázok...' : 'Rozmýšľam...')
+            ? (isImage ? 'Generujem obrázok...' : 'Rozmýšľam...')
             : '';
     }
 
@@ -498,8 +522,14 @@
     }
 
     /** Generuje obrázok pomocou Imagen 3.0. */
-    async function generateImage(userPrompt) {
-        setLoading(true);
+    async function generateImageFromPrompt(userPrompt) {
+        
+        if (!checkAndApplyRateLimit()) {
+             // UI upozornenie už prebehlo v checkAndApplyRateLimit
+             return; 
+        }
+
+        setLoading(true, true); 
 
         // Pomocný prompt pre zabezpečenie, že text je dominantný a estetický
         const imagePrompt = `High-resolution, clear, and prominent typography featuring the text: "${userPrompt}". Style and color based on the user's description. The final image should be a cinematic, aesthetically pleasing, wide-screen 16:9 composition.`;
@@ -510,7 +540,7 @@
             },
             parameters: { 
                 "sampleCount": 1,
-                "aspectRatio": "16:9" // ZMENA NA ŠIROKOUHLÝ FORMÁT 16:9
+                "aspectRatio": "16:9" // ŠIROKOUHLÝ FORMÁT
             }
         };
 
@@ -550,50 +580,20 @@
         }
         setLoading(false);
     }
-
-
-    /** Spracuje odoslanie formulára a zavolá príslušné API (Text alebo Obrázok). */
-    async function sendMessage(event) {
-        event.preventDefault();
-        const userQuery = input.value.trim();
-        if (!userQuery) return;
-
-        // KONTROLA AUTORIZÁCIE
-        if (!apiKey) {
-            displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
-            return;
-        }
-
-        // KONTROLA LOKÁLNEHO LIMITU
+    
+    /** Spracuje odoslanie textovej chatovej otázky. */
+    async function sendChatQuery(userQuery) {
+        
         if (!checkAndApplyRateLimit()) {
-            input.placeholder = "LIMIT VYČERPANÝ! Skúste to prosím neskôr.";
-            input.classList.add('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
-            setTimeout(() => {
-                input.placeholder = "Zadajte /obrazok alebo svoju otázku...";
-                input.classList.remove('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
-            }, 3000);
-            input.value = ''; 
-            return;
+            // UI upozornenie už prebehlo v checkAndApplyRateLimit
+            return; 
         }
 
         displayMessage(userQuery, 'user');
         input.value = '';
-        
-        
-        // ZISTENIE, ČI IDE O GENERÁCIU OBRÁZKA
-        if (userQuery.toLowerCase().startsWith('/obrazok')) {
-            const imagePrompt = userQuery.substring('/obrazok'.length).trim();
-            if (imagePrompt) {
-                await generateImage(imagePrompt);
-            } else {
-                displayMessage("Prosím, zadajte popis obrázku po príkaze /obrazok. Napr.: /obrazok modrý drak letiaci nad horami", 'ai');
-            }
-            return; 
-        }
 
-        // AK NIE JE PRÍKAZ NA OBRÁZOK, POUŽIJE SA TEXTOVÝ CHAT (Gemini 2.5 Pro)
         chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
-        setLoading(true);
+        setLoading(true, false); // false = not image
 
         const payload = {
             contents: chatHistory,
@@ -607,7 +607,7 @@
         const maxRetries = 3;
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
             try {
-                const response = await fetch(textApiUrl, { // Použitie textApiUrl
+                const response = await fetch(textApiUrl, { 
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -672,17 +672,50 @@
         setLoading(false);
     }
     
-    // --- Spustenie aplikácie ---
+    // --- Spustenie aplikácie a event listenery ---
 
     window.onload = function () {
         init3D();
         animate3D();
-        // Načíta a zobrazí stav lokálneho limitu pri štarte
         checkAndApplyRateLimit(); 
-        form.addEventListener('submit', sendMessage);
+        
+        // Listener pre tlačidlo CHAT (Odoslať) - spúšťa sa formulárom (typ="submit")
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userQuery = input.value.trim();
+            if (!userQuery) return;
+            
+            if (!apiKey) {
+                displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
+                return;
+            }
+            sendChatQuery(userQuery);
+        });
+
+        // Listener pre tlačidlo OBRÁZOK (Generovať Obrázok) - spúšťa sa kliknutím (typ="button")
+        sendImageButton.addEventListener('click', async () => {
+            const userPrompt = input.value.trim();
+            
+            if (!userPrompt) {
+                displayMessage("Prosím, zadajte popis obrázku, ktorý chcete vygenerovať, do textového poľa.", 'ai');
+                return;
+            }
+
+            if (!apiKey) {
+                displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
+                return;
+            }
+
+            // Zobrazenie promptu ako správy
+            displayMessage(`Požiadavka na obrázok: "${userPrompt}"`, 'user');
+            input.value = '';
+            
+            await generateImageFromPrompt(userPrompt);
+        });
+
 
         // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný pre komplexné odpovede a generovanie obrázkov. Ak chcete vytvoriť obrázok vo formáte 16:9 s textom, zadajte príkaz /obrazok nasledovaný popisom.";
+        const initialMessageText = "Vitaj! Model bol teraz aktualizovaný. Ak chcete vytvoriť obrázok vo formáte 16:9 s textom, zadajte popis do poľa a kliknite na tlačidlo Generovať Obrázok.";
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
