@@ -6,13 +6,10 @@
     <title>ChatSlovak AI Pokročilý V5 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Knižnice pre pokročilú funkčnosť a 3D grafiku boli presunuté na koniec <body> pre zaručenie načítania -->
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            /* Tmavé pozadie pre lepší disco efekt */
             background-color: #1f003e; 
             display: flex;
             justify-content: center;
@@ -22,7 +19,6 @@
             position: relative; 
             overflow: hidden;
         }
-        /* Štýly pre 3D Canvas pozadie */
         #bg-canvas {
             position: fixed; 
             top: 0;
@@ -40,24 +36,22 @@
             flex-direction: column;
             
             /* SKLENENÝ EFEKT */
-            background-color: rgba(255, 255, 255, 0.1); /* Priesvitné pozadie */
-            backdrop-filter: blur(15px); /* Kľúčový efekt rozostrenia */
-            -webkit-backdrop-filter: blur(15px); /* Pre Safari */
+            background-color: rgba(255, 255, 255, 0.1); 
+            backdrop-filter: blur(15px); 
+            -webkit-backdrop-filter: blur(15px); 
             border-radius: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.2); /* Jemný biely okraj */
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); /* Hlbší, priehľadný tieň */
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); 
             overflow: hidden;
             z-index: 10; 
         }
         
         .chat-header {
-            /* Sklenená hlavička, tmavé písmo */
             background-color: rgba(255, 255, 255, 0.05);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .chat-footer {
-            /* Sklenená pätička */
             background-color: rgba(255, 255, 255, 0.05); 
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
@@ -77,18 +71,17 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .user-message {
-            background-color: #3b82f6; /* Blue-500 */
+            background-color: #3b82f6; 
             color: white;
             margin-left: auto;
             border-bottom-right-radius: 0.25rem;
         }
         .ai-message {
-            /* AI bublina zostáva takmer biela pre čitateľnosť, s miernou transparentnosťou */
             background-color: rgba(255, 255, 255, 0.85); 
             color: #1f2937;
             margin-right: auto;
             border-bottom-left-radius: 0.25rem;
-            white-space: pre-wrap; /* Preserve formatting from markdown response */
+            white-space: pre-wrap;
         }
         .source-link {
             display: block;
@@ -101,7 +94,6 @@
             text-align: center;
             color: #9ca3af;
         }
-        /* Style for markdown-like formatting */
         .ai-message p, .ai-message ul, .ai-message ol, .ai-message strong {
             margin-bottom: 0.5rem;
             line-height: 1.4;
@@ -127,7 +119,7 @@
     <!-- Messages Area -->
     <div id="messages">
         <div class="message-bubble ai-message">
-            <p>Vitaj v **ChatSlovak AI Pokročilý V5 Pro!** Som tvoj špecializovaný **Model V5**. Som tu, aby som ti ako hlavný analytik spoločnosti GAMEPLA631 pomohol s hĺbkovým spracovaním dát, riešením zložitých strategických výziev a komplexnou analýzou. Pripravený na prácu!</p>
+            <p>Vitaj v **ChatSlovak AI Pokročilý V5 Pro!** Skúšam novú verziu, v ktorej by už nemala byť chyba s odosielaním! Pripravený na prácu!</p>
         </div>
     </div>
 
@@ -155,28 +147,23 @@
     // --- 3D Background Initialization (Three.js) ---
     let scene, camera, renderer, discoBall;
     let discoLights = [];
-    const lightColors = [0xff00ff, 0x00ffff, 0xffff00]; // Farby pre disco lúče: Magenta, Cyan, Yellow
+    const lightColors = [0xff00ff, 0x00ffff, 0xffff00]; 
     const canvas = document.getElementById('bg-canvas');
     let mouseX = 0, mouseY = 0;
 
     function init3D() {
-        // Scéna
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111); // Veľmi tmavé pozadie
+        scene.background = new THREE.Color(0x111111); 
 
-        // Kamera
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000); 
         camera.position.z = 200;
 
-        // Renderer
         renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // Ambient Light
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
         scene.add(ambientLight);
 
-        // 1. Disco Guľa (Sphere)
         const ballGeometry = new THREE.SphereGeometry(40, 64, 32);
         const ballMaterial = new THREE.MeshPhongMaterial({
             color: 0xcccccc,
@@ -187,7 +174,6 @@
         discoBall = new THREE.Mesh(ballGeometry, ballMaterial);
         scene.add(discoBall);
 
-        // 2. Disco Svetlá (Point Lights orbiting the ball)
         const lightIntensity = 2;
         const lightDistance = 200;
         const lightOrbitRadius = 150;
@@ -221,11 +207,9 @@
 
         const time = Date.now() * 0.0002;
         
-        // 1. Rotácia Disco Guľa
         discoBall.rotation.y += 0.005; 
         discoBall.rotation.x += 0.002;
 
-        // 2. Pohyb svetiel (orbitálny pohyb okolo stredu)
         const orbitRadius = 150;
         discoLights.forEach((light, index) => {
             const angle = time * (index + 1) * 0.5;
@@ -234,7 +218,6 @@
             light.position.y = 50 * Math.sin(time + index); 
         });
 
-        // Pomaly posúvame kameru v reakcii na myš
         camera.position.x += (mouseX - camera.position.x) * 0.05;
         camera.position.y += (-mouseY - camera.position.y) * 0.05;
         camera.lookAt(scene.position);
@@ -320,15 +303,12 @@
 
     // --- API Configuration and Global Variables ---
 
-    // DÔLEŽITÉ: Vložte svoj Gemini API kľúč sem.
-    const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // Nechajte prázdne, ak ho poskytuje prostredie Canvas.
+    const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Použitý model
     const modelName = 'gemini-2.5-flash-preview-05-20';
     const apiUrl = `${apiUrlBase}${modelName}:generateContent?key=${apiKey}`;
 
-    // Systémové inštrukcie pre pokročilú AI (definujú jej osobnosť a štýl)
     const systemInstruction = {
         parts: [{ 
             text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické, logicky štruktúrované (napr. s použitím očíslovaných bodov, odsekov alebo zoznamov) a musia preukazovať pokročilé kritické myslenie. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy, ak si to otázka vyžaduje. Odpovedaj výhradne v slovenčine." 
@@ -344,7 +324,6 @@
 
     // --- UI Functions ---
 
-    /** Vytvorí a pridá bublinu správy do chatu */
     function displayMessage(text, sender, sources = []) {
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ${sender === 'user' ? 'user-message' : 'ai-message'}`;
@@ -358,13 +337,11 @@
         
         bubble.innerHTML = formattedText;
 
-        // Pridanie zdrojov (grounding) pre AI odpovede
         if (sender === 'ai' && sources.length > 0) {
             const sourcesList = document.createElement('div');
             sourcesList.className = "mt-2 pt-2 border-t border-gray-300 text-xs";
             sourcesList.innerHTML = `<strong class="text-gray-600">Zdroje:</strong>`;
             
-            // Limitujeme na 3 zdroje pre prehľadnosť
             sources.slice(0, 3).forEach((source, index) => {
                 if (source.uri && source.title) {
                     const link = document.createElement('a');
@@ -379,10 +356,9 @@
         }
 
         messagesDiv.appendChild(bubble);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to bottom
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    /** Nastaví stav načítania */
     function setLoading(isLoading) {
         sendButton.disabled = isLoading;
         input.disabled = isLoading;
@@ -391,12 +367,9 @@
 
     // --- Core API Logic ---
 
-    /**
-     * Implementuje exponenciálne oneskorenie a opakované pokusy pre API volania.
-     */
     function delay(attempt) {
-        const baseDelay = 1000; // 1 sekunda
-        const maxDelay = 16000; // Max 16 sekúnd
+        const baseDelay = 1000;
+        const maxDelay = 16000;
         const currentDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
         return new Promise(resolve => setTimeout(resolve, currentDelay));
     }
@@ -407,9 +380,9 @@
         const userQuery = input.value.trim();
         if (!userQuery) return;
 
-        // KONTROLA API KĽÚČA
+        // KONTROLA AUTORIZÁCIE
         if (!apiKey) {
-            displayMessage("CHYBA: API kľúč nie je nastavený. Nemôžem odoslať požiadavku. (Chyba: Nedostatočná autorizácia)", 'ai');
+            displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
             return;
         }
 
@@ -434,11 +407,14 @@
             contents: chatHistory,
             tools: [{ "google_search": {} }],
             systemInstruction: systemInstruction,
-            // --- OPRAVA CHYBY: ZMENA 'config' na 'generationConfig' ---
+            
+            // *****************************************************************
+            // *** KRITICKÁ OPRAVA: Použitie správneho poľa "generationConfig" ***
+            // *****************************************************************
             generationConfig: {
-                temperature: 0.7, // Mierna kreativita pre analytické odpovede
+                temperature: 0.7, 
             }
-            // -----------------------------------------------------------
+            // *****************************************************************
         };
 
         const maxRetries = 3;
@@ -458,7 +434,7 @@
                             errorMessage = `Chyba API: ${errorBody.error.message}`;
                         }
                     } catch (e) {
-                        errorMessage = `HTTP chyba so statusom ${response.status}. Nepodarilo sa získať detail chyby.`;
+                        errorMessage = `HTTP chyba so statusom ${response.status}.`;
                     }
 
                     displayMessage(`KRITICKÝ PROBLÉM: ${errorMessage} Skontrolujte, prosím, svoj API kľúč a kvótu.`, 'ai');
@@ -493,7 +469,7 @@
                     break; 
 
                 } else {
-                    displayMessage("AI neposkytla žiadnu odpoveď. Skúste preformulovať otázku. (Prázdna odpoveď od modelu)", 'ai');
+                    displayMessage("AI neposkytla žiadnu odpoveď. (Prázdna odpoveď od modelu)", 'ai');
                 }
             } catch (error) {
                 console.error("Chyba počas volania API:", error);
@@ -501,8 +477,6 @@
                 if (attempt === maxRetries) {
                     const errorMessage = `Nastala kritická chyba pri komunikácii s AI po ${maxRetries} pokusoch. (${error.message})`;
                     displayMessage(errorMessage, 'ai');
-                } else {
-                    console.log(`Opakovaný pokus č. ${attempt + 1}...`);
                 }
             }
         }
@@ -522,6 +496,7 @@
 </script>
 </body>
 </html>
+
 
 
 
