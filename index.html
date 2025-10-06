@@ -215,10 +215,12 @@
 
         const lightIntensity = 2;
         const lightDistance = 200;
+        
+        // Vytvorenie a umiestnenie dynamických svetiel (PointLights)
         const lightOrbitRadius = 150;
-
         lightColors.forEach((colorHex, index) => {
             const pointLight = new THREE.PointLight(colorHex, lightIntensity, lightDistance);
+            // Počiatočné umiestnenie v kruhu
             pointLight.position.x = lightOrbitRadius * Math.cos(index * Math.PI * 2 / 3);
             pointLight.position.y = lightOrbitRadius * Math.sin(index * Math.PI * 2 / 3);
             pointLight.position.z = 0;
@@ -231,6 +233,7 @@
     }
 
     function onDocumentMouseMove(event) {
+        // Nastavuje pozíciu myši normalizovanú k stredu obrazovky
         mouseX = (event.clientX - window.innerWidth / 2) * 0.2;
         mouseY = (event.clientY - window.innerHeight / 2) * 0.2;
     }
@@ -246,17 +249,20 @@
 
         const time = Date.now() * 0.0002;
         
+        // Rotácia diskoguľe
         discoBall.rotation.y += 0.005; 
         discoBall.rotation.x += 0.002;
 
         const orbitRadius = 150;
+        // Animácia svetiel
         discoLights.forEach((light, index) => {
             const angle = time * (index + 1) * 0.5;
             light.position.x = orbitRadius * Math.cos(angle + index * 1.5);
             light.position.z = orbitRadius * Math.sin(angle + index * 1.5);
-            light.position.y = 50 * Math.sin(time + index); 
+            light.position.y = 50 * Math.sin(time + index); // Pohyb hore/dole
         });
 
+        // Pohyb kamery podľa myši pre jemný paralax efekt
         camera.position.x += (mouseX - camera.position.x) * 0.05;
         camera.position.y += (-mouseY - camera.position.y) * 0.05;
         camera.lookAt(scene.position);
@@ -283,8 +289,9 @@
         const limitStatusElement = document.getElementById('limit-status');
         
         if (messagesRemaining <= 0) {
+            // Zistíme čas do resetu na základe najstaršej správy v poslednej hodine
             const timeUntilResetMs = recentTimestamps.length > 0 
-                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps[0])
+                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps.sort((a, b) => a - b)[0]) // Sort pre najstaršiu
                 : 0; 
             
             const minutes = Math.floor(timeUntilResetMs / 60000);
@@ -428,6 +435,15 @@
     const sendImageButton = document.getElementById('send-image-button');
     const loadingIndicator = document.getElementById('loading-indicator');
 
+    // --- Utility Functions ---
+
+    function delay(attempt) {
+        const baseDelay = 1000;
+        const maxDelay = 16000;
+        const currentDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
+        return new Promise(resolve => setTimeout(resolve, currentDelay));
+    }
+
     // --- UI Functions ---
 
     function displayMessage(text, sender, sources = []) {
@@ -514,25 +530,17 @@
 
     // --- Core API Logic ---
 
-    function delay(attempt) {
-        const baseDelay = 1000;
-        const maxDelay = 16000;
-        const currentDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
-        return new Promise(resolve => setTimeout(resolve, currentDelay));
-    }
-
     /** Generuje obrázok pomocou Imagen 3.0. */
     async function generateImageFromPrompt(userPrompt) {
         
         if (!checkAndApplyRateLimit()) {
-             // UI upozornenie už prebehlo v checkAndApplyRateLimit
              return; 
         }
 
         setLoading(true, true); 
 
-        // Pomocný prompt pre zabezpečenie, že text je dominantný a estetický
-        const imagePrompt = `High-resolution, clear, and prominent typography featuring the text: "${userPrompt}". Style and color based on the user's description. The final image should be a cinematic, aesthetically pleasing, wide-screen 16:9 composition.`;
+        // Pomocný prompt pre lepšiu kvalitu, ale s menším dôrazom na text, aby nebol príliš reštriktívny
+        const imagePrompt = `Wide-screen 16:9 cinematic photo of: "${userPrompt}". High detail, photorealistic.`;
 
         const payload = {
             instances: { 
@@ -555,6 +563,26 @@
 
                 if (!response.ok) {
                     let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
+                    
+                    if (response.status === 400) {
+                        errorMessage = `Chyba 400: Váš popis je pravdepodobne v rozpore s bezpečnostnými pravidlami AI (napr. explicitný obsah, autorské práva, nevhodná téma). Skúste iný, menej kontroverzný popis.`;
+                    } else if (response.status === 429) {
+                        errorMessage = `Chyba 429: Prekročená kvóta. Skúste to neskôr.`;
+                    } else {
+                         // Pokus o získanie podrobnejšej chyby
+                        try {
+                             const errorBody = await response.json();
+                             if (errorBody && errorBody.error && errorBody.error.message) {
+                                 errorMessage = `API Chyba ${response.status}: ${errorBody.error.message}`;
+                             }
+                        } catch(e) { /* ignore json parse error */ }
+                    }
+
+                    if (attempt < maxRetries) {
+                        console.warn(`Pokus ${attempt} zlyhal, opakujem za chvíľu: ${errorMessage}`);
+                        await delay(attempt);
+                        continue;
+                    }
                     throw new Error(errorMessage);
                 }
 
@@ -570,12 +598,9 @@
                 }
             } catch (error) {
                 console.error("Chyba počas volania Imagen API:", error);
-                
-                if (attempt < maxRetries) {
-                    await delay(attempt);
-                    continue;
+                if (attempt === maxRetries) {
+                    displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
                 }
-                displayMessage(`Kritická chyba pri generovaní obrázku po ${maxRetries} pokusoch: ${error.message}`, 'ai');
             }
         }
         setLoading(false);
@@ -585,7 +610,6 @@
     async function sendChatQuery(userQuery) {
         
         if (!checkAndApplyRateLimit()) {
-            // UI upozornenie už prebehlo v checkAndApplyRateLimit
             return; 
         }
 
@@ -624,13 +648,12 @@
                         errorMessage = `HTTP chyba so statusom ${response.status}.`;
                     }
 
-                    displayMessage(`KRITICKÝ PROBLÉM: ${errorMessage} Skontrolujte, prosím, svoj API kľúč a kvótu.`, 'ai');
-                    
                     if (attempt < maxRetries) {
+                        console.warn(`Pokus ${attempt} zlyhal, opakujem za chvíľu: ${errorMessage}`);
                         await delay(attempt);
                         continue;
                     }
-                    throw new Error(`Kritická chyba po opakovaných pokusoch: ${errorMessage}`);
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
@@ -719,11 +742,18 @@
         if (synth.onvoiceschanged !== undefined) {
             synth.onvoiceschanged = () => {
                 populateVoiceList();
-                speakText(initialMessageText);
+                // Speak the initial message only if it hasn't been spoken yet
+                if (messagesDiv.children.length === 1) { 
+                     speakText(initialMessageText);
+                }
             };
         } else {
             // Fallback pre rýchlejšie prehliadače
-            setTimeout(() => speakText(initialMessageText), 500);
+            setTimeout(() => {
+                if (messagesDiv.children.length === 1) { 
+                     speakText(initialMessageText);
+                }
+            }, 500);
         }
     }
 
