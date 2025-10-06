@@ -314,42 +314,62 @@
     const MAX_MESSAGES_PER_HOUR = 30; 
     const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; 
     const STORAGE_KEY = 'chatSlovakMessageTimestamps';
+    
+    // Globálna premenná pre časovač resetu
+    window.rateLimitTimeout = null; 
 
-    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia zostávajúce správy. */
+    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia objekt so stavom.
+     * @returns {object} { remaining: number, timeUntilReset: number }
+     */
     function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
+        // Odfiltruje len tie timestampy, ktoré sú ešte v rámci hodinového okna.
         const recentTimestamps = currentTimestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
         const messagesSent = recentTimestamps.length;
         const messagesRemaining = MAX_MESSAGES_PER_HOUR - messagesSent;
 
         const limitStatusElement = document.getElementById('limit-status');
         
+        let timeUntilResetMs = 0;
+
         if (messagesRemaining <= 0) {
-            const timeUntilResetMs = recentTimestamps.length > 0 
-                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps.sort((a, b) => a - b)[0])
-                : 0; 
+            // Limit VYČERPANÝ. Vypočítame čas, kedy vyprší najstaršia správa.
+            if (recentTimestamps.length > 0) {
+                // Najprv zoradíme, aby sme našli najstaršiu správu
+                const oldestTimestamp = recentTimestamps.sort((a, b) => a - b)[0];
+                timeUntilResetMs = RATE_LIMIT_WINDOW_MS - (now - oldestTimestamp);
+                if (timeUntilResetMs < 0) timeUntilResetMs = 0; // Ak čas už uplynul, nastavíme na 0.
+            }
             
             const minutes = Math.floor(timeUntilResetMs / 60000);
             const seconds = Math.floor((timeUntilResetMs % 60000) / 1000);
             
+            // UI Update
             limitStatusElement.textContent = `Limit VYČERPANÝ. Reset za ${minutes}m ${seconds}s`;
             limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-red-700/70";
-            return 0;
+            
+            return { remaining: 0, timeUntilReset: timeUntilResetMs };
+
         } else {
+            // Limit OK
             limitStatusElement.textContent = `Zostáva: ${messagesRemaining} z ${MAX_MESSAGES_PER_HOUR} správ/h`;
             limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-green-600/70";
-            return messagesRemaining;
+            
+            return { remaining: messagesRemaining, timeUntilReset: 0 };
         }
     }
 
     /**
      * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
+     * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
+     * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
      * @returns {boolean} True, ak je povolené odoslať správu.
      */
-    function checkAndApplyRateLimit() {
+    function checkAndApplyRateLimit(apply = false) { 
         const now = Date.now();
         let timestamps = [];
         
+        // 1. Načítať a vyčistiť staré časy
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
@@ -364,20 +384,46 @@
         }
 
         let recentTimestamps = timestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
-        const messagesRemaining = updateLimitStatusDisplay(recentTimestamps);
+        
+        // 2. Skontrolovať limit
+        const { remaining: messagesRemaining, timeUntilReset } = updateLimitStatusDisplay(recentTimestamps);
 
+        // 3. Logika aplikácie a monitorovania
         if (messagesRemaining > 0) {
-            recentTimestamps.push(now);
-            
-            try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(recentTimestamps));
-            } catch (e) {
-                console.error("Chyba pri zápise do localStorage:", e);
+            // Limit OK. Zrušíme existujúci časovač (ak nejaký bežal z predchádzajúceho zlyhania)
+            if (window.rateLimitTimeout) {
+                clearTimeout(window.rateLimitTimeout);
+                window.rateLimitTimeout = null;
+            }
+
+            if (apply) {
+                // Ak sa má aplikovať (odosiela sa správa), pridáme nový timestamp
+                recentTimestamps.push(now);
+                
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(recentTimestamps));
+                } catch (e) {
+                    console.error("Chyba pri zápise do localStorage:", e);
+                }
+                // Prekreslíme UI po pridaní novej správy
+                updateLimitStatusDisplay(recentTimestamps); 
             }
             
-            updateLimitStatusDisplay(recentTimestamps); 
             return true; 
         } else {
+            // Limit VYČERPANÝ. Nastavíme časovač na kontrolu, ak ešte nie je spustený.
+            if (timeUntilReset > 0) {
+                if (window.rateLimitTimeout) {
+                    clearTimeout(window.rateLimitTimeout); // Vždy vyčistíme starý, aby sme predišli duplikátom
+                }
+                
+                // Nastavíme timeout o 1 sekundu dlhší ako je čas do resetu pre zaručenie uplynutia.
+                window.rateLimitTimeout = setTimeout(() => {
+                    window.rateLimitTimeout = null; 
+                    checkAndApplyRateLimit(false); // Skontrolujeme znova bez aplikácie timestampu
+                }, timeUntilReset + 1000); 
+            }
+            
             return false;
         }
     }
@@ -602,7 +648,7 @@
     /** Generuje kód pre Roblox Command Bar na vytvorenie 3D modelu. */
     async function generate3DModelCode(userPrompt) {
         
-        if (!checkAndApplyRateLimit()) {
+        if (!checkAndApplyRateLimit(true)) { // Aplikujeme timestamp
              return; 
         }
 
@@ -678,7 +724,7 @@ ${aiCode}
     /** Spracuje odoslanie textovej chatovej otázky. */
     async function sendChatQuery(userQuery) {
         
-        if (!checkAndApplyRateLimit()) {
+        if (!checkAndApplyRateLimit(true)) { // Aplikujeme timestamp
             return; 
         }
 
@@ -769,7 +815,9 @@ ${aiCode}
     window.onload = function () {
         init3D();
         animate3D();
-        checkAndApplyRateLimit(); 
+        
+        // Pri štarte len skontrolujeme limit bez aplikácie (apply=false)
+        checkAndApplyRateLimit(false); 
         
         // Listener pre tlačidlo CHAT (Odoslať)
         form.addEventListener('submit', (e) => {
@@ -823,7 +871,6 @@ ${aiCode}
 </script>
 </body>
 </html>
-
 
 
 
