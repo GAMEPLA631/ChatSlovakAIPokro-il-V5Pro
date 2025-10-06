@@ -118,8 +118,9 @@
 
     <!-- Messages Area -->
     <div id="messages">
+        <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj v **ChatSlovak AI Pokročilý V5 PRO!** Model bol teraz aktualizovaný na najvyššiu úroveň výkonu. Aplikácia **nepoužíva žiadnu databázu**; limit je kontrolovaný lokálne vo vašom prehliadači.</p>
+            <p>Vitaj v ChatSlovak AI Pokročilý V5 PRO! Model bol teraz aktualizovaný na najvyššiu úroveň výkonu, vďaka čomu zvládne aj tie najkomplexnejšie otázky. Aplikácia nepoužíva žiadnu databázu; limit je kontrolovaný lokálne vo vašom prehliadači.</p>
         </div>
     </div>
 
@@ -303,6 +304,64 @@
         }
     }
 
+    // --- Text-to-Speech (TTS) Functionality ---
+    const synth = window.speechSynthesis;
+    let voices = [];
+
+    function populateVoiceList() {
+        voices = synth.getVoices();
+    }
+
+    // Načítanie dostupných hlasov
+    if (synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = populateVoiceList;
+    } else {
+        populateVoiceList(); 
+    }
+    
+    function speakText(text) {
+        if (!synth || !text) return;
+        
+        // Zastavenie predošlého hovorenia
+        if (synth.speaking) {
+            synth.cancel();
+        }
+
+        // Odstránenie značiek Markdown (tučné písmo) pre lepší zážitok z hovorenia
+        const cleanText = text.replace(/\*\*/g, '').replace(/###\s*/g, ''); 
+
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+
+        // 1. Prioritne nájdeme slovenský hlas
+        let selectedVoice = voices.find(voice => voice.lang.startsWith('sk-SK'));
+
+        // 2. Ak slovenský nie je, hľadáme nejaký pekný anglický (často Google)
+        if (!selectedVoice) {
+            selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en'));
+        }
+        
+        // 3. Fallback na prvý dostupný hlas
+        if (!selectedVoice) {
+            selectedVoice = voices[0];
+        }
+
+        // Aplikácia vybraného hlasu
+        if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            utterance.lang = selectedVoice.lang;
+        } else {
+             // Nastavíme aspoň slovenský jazyk, aby prehliadač vybral default SK/CZ hlas
+            utterance.lang = 'sk-SK'; 
+        }
+
+        // Príjemné nastavenie rýchlosti a výšky
+        utterance.rate = 1.0; 
+        utterance.pitch = 1.0; 
+
+        synth.speak(utterance);
+    }
+
+
     // --- API Configuration and Global Variables ---
 
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
@@ -314,7 +373,7 @@
 
     const systemInstruction = {
         parts: [{ 
-            text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické, logicky štruktúrované (napr. s použitím očíslovaných bodov, odsekov alebo zoznamov) a musia preukazovať pokročilé kritické myslenie. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy, ak si to otázka vyžaduje. Odpovedaj výhradne v slovenčine." 
+            text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické, logicky štruktúrované (napr. s použitím očíslovaných bodov, odsekov alebo zoznamov) a musia preukazovať pokročilé kritické myslenie. Vyhni sa zbytočnému tučnému písmu (markdown **), aby bol hlasový výstup plynulejší. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy, ak si to otázka vyžaduje. Odpovedaj výhradne v slovenčine." 
         }]
     };
 
@@ -465,6 +524,7 @@
 
                     chatHistory.push({ role: "model", parts: [{ text: aiText }] });
                     displayMessage(aiText, 'ai', sources);
+                    speakText(aiText); // Volanie TTS
                     
                     break; 
 
@@ -492,11 +552,24 @@
         // Načíta a zobrazí stav lokálneho limitu pri štarte
         checkAndApplyRateLimit(); 
         form.addEventListener('submit', sendMessage);
+
+        // Prečítanie úvodnej správy po načítaní hlasov
+        const initialMessageText = "Vitaj v ChatSlovak AI Pokročilý V5 PRO! Model bol teraz aktualizovaný na najvyššiu úroveň výkonu, vďaka čomu zvládne aj tie najkomplexnejšie otázky. Aplikácia nepoužíva žiadnu databázu; limit je kontrolovaný lokálne vo vašom prehliadači.";
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = () => {
+                populateVoiceList();
+                speakText(initialMessageText);
+            };
+        } else {
+            // Fallback pre rýchlejšie prehliadače
+            setTimeout(() => speakText(initialMessageText), 500);
+        }
     }
 
 </script>
 </body>
 </html>
+
 
 
 
