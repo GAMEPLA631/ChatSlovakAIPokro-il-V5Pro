@@ -118,7 +118,7 @@
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
         <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 Pro</h1>
         <p class="text-sm text-gray-400">Naša spoločnosť GAMEPLA631: Pýtajte sa na veľmi zložité témy. Používa overené dáta (Grounding).</p>
-        <!-- NOVÝ INDIKÁTOR STAVU LIMITU -->
+        <!-- INDIKÁTOR STAVU LIMITU -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
             Načítavam limit...
         </span>
@@ -133,7 +133,6 @@
 
     <!-- Loading Indicator -->
     <div id="loading-indicator" class="hidden">
-        <!-- Zmenená textová správa pri načítavaní podľa požiadavky používateľa -->
         <div class="animate-pulse">Rozmýšľam Pre lepšiu odpoveď čakaj 90s</div>
     </div>
 
@@ -174,17 +173,15 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         // Ambient Light
-        // Mierne ambientné svetlo, aby boli viditeľné tmavé strany gule
         const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
         scene.add(ambientLight);
 
         // 1. Disco Guľa (Sphere)
         const ballGeometry = new THREE.SphereGeometry(40, 64, 32);
-        // MeshPhongMaterial pre lesklý, reflexný vzhľad
         const ballMaterial = new THREE.MeshPhongMaterial({
             color: 0xcccccc,
-            specular: 0xffffff, // Biela spektrálna farba
-            shininess: 100, // Vysoký lesk
+            specular: 0xffffff, 
+            shininess: 100, 
             reflectivity: 0.9,
         });
         discoBall = new THREE.Mesh(ballGeometry, ballMaterial);
@@ -196,7 +193,6 @@
         const lightOrbitRadius = 150;
 
         lightColors.forEach((colorHex, index) => {
-            // PointLight simuluje silný bodový lúč, ktorý dopadá na guľu
             const pointLight = new THREE.PointLight(colorHex, lightIntensity, lightDistance);
             pointLight.position.x = lightOrbitRadius * Math.cos(index * Math.PI * 2 / 3);
             pointLight.position.y = lightOrbitRadius * Math.sin(index * Math.PI * 2 / 3);
@@ -205,19 +201,16 @@
             discoLights.push(pointLight);
         });
         
-        // Event listener pre sledovanie myši (pre interaktivitu)
         document.addEventListener('mousemove', onDocumentMouseMove, false);
         window.addEventListener('resize', onWindowResize, false);
     }
 
     function onDocumentMouseMove(event) {
-        // Upravuje pozíciu kamery (virtuálny pohyb)
         mouseX = (event.clientX - window.innerWidth / 2) * 0.2;
         mouseY = (event.clientY - window.innerHeight / 2) * 0.2;
     }
 
     function onWindowResize() {
-        // Zabezpečuje responzívnosť 3D plátna
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -236,10 +229,8 @@
         const orbitRadius = 150;
         discoLights.forEach((light, index) => {
             const angle = time * (index + 1) * 0.5;
-            // Orbitálny pohyb XZ
             light.position.x = orbitRadius * Math.cos(angle + index * 1.5);
             light.position.z = orbitRadius * Math.sin(angle + index * 1.5);
-            // Vertikálny pohyb Y
             light.position.y = 50 * Math.sin(time + index); 
         });
 
@@ -251,19 +242,15 @@
         renderer.render(scene, camera);
     }
 
-    // --- Rate Limiting Configuration (ZNOVU PRIDANÉ) ---
-    const MAX_MESSAGES_PER_HOUR = 30; // Maximálne 30 správ za hodinu
-    const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hodina v milisekundách
+    // --- Rate Limiting Configuration ---
+    const MAX_MESSAGES_PER_HOUR = 30; 
+    const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; 
     const STORAGE_KEY = 'chatSlovakMessageTimestamps';
 
-    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia zostávajúce správy.
-     * @param {Array<number>} currentTimestamps Aktuálny zoznam časových pečiatok správ v okne.
-     * @returns {number} Zostávajúci počet správ.
-     */
+    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia zostávajúce správy. */
     function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
         
-        // 1. Filtrujeme, aby sme odstránili staré správy mimo okna
         const recentTimestamps = currentTimestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
         
         const messagesSent = recentTimestamps.length;
@@ -272,22 +259,17 @@
         const limitStatusElement = document.getElementById('limit-status');
         
         if (messagesRemaining <= 0) {
-            // Limit prekročený
-            // Ak je array prázdny, vrátime max delay, inak vypočítame čas do resetu
             const timeUntilResetMs = recentTimestamps.length > 0 
                 ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps[0])
-                : 0; // Pre istotu, hoci by sa toto nemalo stať
-
+                : 0; 
             
-            // Prevod milisekúnd na minúty a sekundy
             const minutes = Math.floor(timeUntilResetMs / 60000);
             const seconds = Math.floor((timeUntilResetMs % 60000) / 1000);
             
             limitStatusElement.textContent = `Limit VYČERPANÝ. Reset za ${minutes}m ${seconds}s`;
             limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-red-700/70";
-            return 0; // 0 zostávajúcich správ
+            return 0;
         } else {
-            // V rámci limitu
             limitStatusElement.textContent = `Zostáva: ${messagesRemaining} z ${MAX_MESSAGES_PER_HOUR} správ/h`;
             limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-green-600/70";
             return messagesRemaining;
@@ -306,7 +288,6 @@
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
-                // Skúsime parsovať. Ak zlyhá, začneme s prázdnym poľom.
                 timestamps = JSON.parse(stored);
                 if (!Array.isArray(timestamps)) {
                     timestamps = [];
@@ -317,28 +298,22 @@
             timestamps = [];
         }
 
-        // 1. Filtrujeme staré správy mimo okna
         let recentTimestamps = timestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
 
-        // 2. Aktualizujeme UI a získame zostávajúci počet správ
         const messagesRemaining = updateLimitStatusDisplay(recentTimestamps);
 
         if (messagesRemaining > 0) {
-            // 3. Ak je povolené, pridáme novú správu a uložíme
             recentTimestamps.push(now);
             
             try {
-                // Uložíme zoznam platných časových pečiatok vrátane novej
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(recentTimestamps));
             } catch (e) {
                 console.error("Chyba pri zápise do localStorage:", e);
             }
             
-            // Znova aktualizujeme UI, aby sme zohľadnili novú správu
             updateLimitStatusDisplay(recentTimestamps); 
             return true; 
         } else {
-            // Limit bol prekročený, UI bola aktualizovaná v updateLimitStatusDisplay
             return false;
         }
     }
@@ -349,7 +324,7 @@
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // Nechajte prázdne, ak ho poskytuje prostredie Canvas.
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Zmena modelu na štandardný (flash) pre riešenie chyby 403 (prístupové práva/autorizácia).
+    // Použitý model
     const modelName = 'gemini-2.5-flash-preview-05-20';
     const apiUrl = `${apiUrlBase}${modelName}:generateContent?key=${apiKey}`;
 
@@ -374,15 +349,11 @@
         const bubble = document.createElement('div');
         bubble.className = `message-bubble ${sender === 'user' ? 'user-message' : 'ai-message'}`;
         
-        // Konvertujeme Markdown na HTML pre lepšiu čitateľnosť AI odpovedí
         let formattedText;
-        // Zabezpečenie: Použijeme marked.parse() len ak je objekt 'marked' definovaný.
         if (typeof marked !== 'undefined') {
             formattedText = marked.parse(text); 
         } else {
-            // Záložný mechanizmus: Ak marked zlyhá, použijeme len základný text s prevodom riadkov.
             formattedText = `<p>${text.replace(/\n/g, '<br>')}</p>`; 
-            console.warn("Markdown knižnica 'marked' nebola načítaná, používa sa záložný textový formát.");
         }
         
         bubble.innerHTML = formattedText;
@@ -422,8 +393,6 @@
 
     /**
      * Implementuje exponenciálne oneskorenie a opakované pokusy pre API volania.
-     * @param {number} attempt Aktuálny pokus (od 1).
-     * @returns {Promise<number>} oneskorenie v milisekundách.
      */
     function delay(attempt) {
         const baseDelay = 1000; // 1 sekunda
@@ -444,15 +413,14 @@
             return;
         }
 
-        // KONTROLA LIMITU: Ak je limit prekročený, zastaví odoslanie a poskytne vizuálnu spätnú väzbu.
+        // KONTROLA LIMITU
         if (!checkAndApplyRateLimit()) {
-            // Vizuálna spätná väzba pre používateľa, že limit bol prekročený
             input.placeholder = "LIMIT VYČERPANÝ! Skúste to prosím neskôr.";
             input.classList.add('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
             setTimeout(() => {
                 input.placeholder = "Zadajte svoju zložité požiadavku...";
                 input.classList.remove('border-red-500', 'placeholder-red-400', 'ring-2', 'ring-red-500');
-            }, 3000); // Reset placeholder po 3 sekundách
+            }, 3000);
             input.value = ''; 
             return;
         }
@@ -464,14 +432,13 @@
 
         const payload = {
             contents: chatHistory,
-            // Pre komplexné odpovede a fakty vždy použijeme Google Search Grounding
             tools: [{ "google_search": {} }],
-            // Systémové inštrukcie pre "pokročilý" model
             systemInstruction: systemInstruction,
-            // Nastavenia modelu
-            config: {
+            // --- OPRAVA CHYBY: ZMENA 'config' na 'generationConfig' ---
+            generationConfig: {
                 temperature: 0.7, // Mierna kreativita pre analytické odpovede
             }
+            // -----------------------------------------------------------
         };
 
         const maxRetries = 3;
@@ -484,20 +451,16 @@
                 });
 
                 if (!response.ok) {
-                    // --- KRITICKÉ VYLEPŠENIE CHYBOVÉHO HLÁSENIA ---
                     let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
                     try {
                         const errorBody = await response.json();
-                        // Skúsime nájsť presnejšiu správu od API
                         if (errorBody && errorBody.error && errorBody.error.message) {
                             errorMessage = `Chyba API: ${errorBody.error.message}`;
                         }
                     } catch (e) {
-                        // Ak sa nepodarí parsovať JSON, použijeme len status
                         errorMessage = `HTTP chyba so statusom ${response.status}. Nepodarilo sa získať detail chyby.`;
                     }
 
-                    // Zobrazenie kritickej chyby používateľovi
                     displayMessage(`KRITICKÝ PROBLÉM: ${errorMessage} Skontrolujte, prosím, svoj API kľúč a kvótu.`, 'ai');
                     
                     if (attempt < maxRetries) {
@@ -513,7 +476,6 @@
                 if (candidate && candidate.content?.parts?.[0]?.text) {
                     const aiText = candidate.content.parts[0].text;
                     
-                    // Extrakcia zdrojov
                     let sources = [];
                     const groundingMetadata = candidate.groundingMetadata;
                     if (groundingMetadata && groundingMetadata.groundingAttributions) {
@@ -525,11 +487,9 @@
                             .filter(source => source.uri && source.title);
                     }
 
-                    // Pridanie odpovede do histórie a zobrazenie
                     chatHistory.push({ role: "model", parts: [{ text: aiText }] });
                     displayMessage(aiText, 'ai', sources);
                     
-                    // Úspešné volanie, koniec cyklu
                     break; 
 
                 } else {
@@ -539,11 +499,9 @@
                 console.error("Chyba počas volania API:", error);
                 
                 if (attempt === maxRetries) {
-                    // Ak zlyhá posledný pokus
                     const errorMessage = `Nastala kritická chyba pri komunikácii s AI po ${maxRetries} pokusoch. (${error.message})`;
                     displayMessage(errorMessage, 'ai');
                 } else {
-                    // Čakáme a skúsime znova
                     console.log(`Opakovaný pokus č. ${attempt + 1}...`);
                 }
             }
@@ -552,25 +510,19 @@
         setLoading(false);
     }
     
-    // --- External Library for Markdown Rendering ---
-    // Knižnica je načítaná staticky na konci <body>.
+    // --- Spustenie aplikácie ---
 
-
-    // --- Event Listener bol presunutý do window.onload ---
-
-    // Spustenie 3D animácie po načítaní okna a inicializácia stavu limitu
     window.onload = function () {
         init3D();
         animate3D();
-        // Inicializácia zobrazenia limitu pri načítaní
         checkAndApplyRateLimit(); 
-
-        // DÔLEŽITÉ: Listener na odoslanie formulára pridávame až po načítaní všetkých skriptov!
         form.addEventListener('submit', sendMessage);
     }
 
 </script>
 </body>
 </html>
+
+
 
 
