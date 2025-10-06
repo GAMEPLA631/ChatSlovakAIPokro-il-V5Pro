@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatSlovak AI Pokročilý V5 Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Knižnice pre pokročilú funkčnosť a 3D grafiku -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Knižnice pre pokročilú funkčnosť a 3D grafiku boli presunuté na koniec <body> pre zaručenie načítania -->
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
@@ -148,6 +148,10 @@
     </form>
 </div>
 
+<!-- Knižnice pre pokročilú funkčnosť a 3D grafiku -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <script>
     // --- 3D Background Initialization (Three.js) ---
     let scene, camera, renderer, discoBall;
@@ -247,96 +251,96 @@
         renderer.render(scene, camera);
     }
 
-    // --- Rate Limiting Configuration ---
-    const MAX_MESSAGES_PER_HOUR = 38;
-    const LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hodina v milisekundách
-    const STORAGE_KEY_COUNT = 'chatLimitCount';
-    const STORAGE_KEY_RESET = 'chatLimitReset';
+    // --- Rate Limiting Configuration (ZNOVU PRIDANÉ) ---
+    const MAX_MESSAGES_PER_HOUR = 30; // Maximálne 30 správ za hodinu
+    const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hodina v milisekundách
+    const STORAGE_KEY = 'chatSlovakMessageTimestamps';
 
-    /** Pomocná funkcia na získanie dát limitu z localStorage */
-    function getLimitData() {
-        const count = parseInt(localStorage.getItem(STORAGE_KEY_COUNT) || '0', 10);
-        // Reset time je uložený ako timestamp (milisekundy od epochy)
-        const resetTime = parseInt(localStorage.getItem(STORAGE_KEY_RESET) || '0', 10);
-        return { count, resetTime };
-    }
-
-    /** Pomocná funkcia na uloženie dát limitu do localStorage */
-    function updateLimitData(count, resetTime) {
-        localStorage.setItem(STORAGE_KEY_COUNT, count.toString());
-        localStorage.setItem(STORAGE_KEY_RESET, resetTime.toString());
-    }
-    
-    /** Aktualizuje UI element s informáciou o zostávajúcom limite */
-    function updateLimitStatusDisplay() {
-        const { count, resetTime } = getLimitData();
+    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia zostávajúce správy.
+     * @param {Array<number>} currentTimestamps Aktuálny zoznam časových pečiatok správ v okne.
+     * @returns {number} Zostávajúci počet správ.
+     */
+    function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
+        
+        // 1. Filtrujeme, aby sme odstránili staré správy mimo okna
+        const recentTimestamps = currentTimestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
+        
+        const messagesSent = recentTimestamps.length;
+        const messagesRemaining = MAX_MESSAGES_PER_HOUR - messagesSent;
+
         const limitStatusElement = document.getElementById('limit-status');
         
-        if (now >= resetTime) {
-            // Limit vypršal alebo je to prvá správa
-            limitStatusElement.textContent = `Správy: ${count} / ${MAX_MESSAGES_PER_HOUR} (LIMIT OK)`;
-            limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-green-600/70";
-        } else if (count >= MAX_MESSAGES_PER_HOUR) {
-            // Limit je prekročený
-            const timeLeftMs = resetTime - now;
-            const minutesLeft = Math.ceil(timeLeftMs / (60 * 1000));
-            limitStatusElement.textContent = `BLOKOVANÉ: Reset o ${minutesLeft} min.`;
+        if (messagesRemaining <= 0) {
+            // Limit prekročený
+            // Ak je array prázdny, vrátime max delay, inak vypočítame čas do resetu
+            const timeUntilResetMs = recentTimestamps.length > 0 
+                ? RATE_LIMIT_WINDOW_MS - (now - recentTimestamps[0])
+                : 0; // Pre istotu, hoci by sa toto nemalo stať
+
+            
+            // Prevod milisekúnd na minúty a sekundy
+            const minutes = Math.floor(timeUntilResetMs / 60000);
+            const seconds = Math.floor((timeUntilResetMs % 60000) / 1000);
+            
+            limitStatusElement.textContent = `Limit VYČERPANÝ. Reset za ${minutes}m ${seconds}s`;
             limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-red-700/70";
+            return 0; // 0 zostávajúcich správ
         } else {
-            // Počítadlo beží
-            const timeLeftMs = resetTime - now;
-            const minutesLeft = Math.ceil(timeLeftMs / (60 * 1000));
-            limitStatusElement.textContent = `Správy: ${count} / ${MAX_MESSAGES_PER_HOUR} (Reset za ${minutesLeft} min)`;
-            limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-yellow-600/70";
+            // V rámci limitu
+            limitStatusElement.textContent = `Zostáva: ${messagesRemaining} z ${MAX_MESSAGES_PER_HOUR} správ/h`;
+            limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-green-600/70";
+            return messagesRemaining;
         }
     }
 
 
     /**
-     * Kontroluje a aplikuje limit počtu správ (38/hodinu).
-     * @returns {boolean} True, ak je povolené odoslať správu, inak False.
+     * Kontroluje a aplikuje limit počtu správ.
+     * @returns {boolean} True, ak je povolené odoslať správu.
      */
     function checkAndApplyRateLimit() {
-        let { count, resetTime } = getLimitData();
         const now = Date.now();
-
-        // 1. Skontrolujeme, či vypršalo časové okno
-        if (now >= resetTime) {
-            // Okno vypršalo, resetujeme počítadlo a nastavíme nové okno (1 hodina od teraz)
-            count = 0;
-            resetTime = now + LIMIT_WINDOW_MS;
-            // V tomto kroku ešte neukladáme, počkáme, kým sa zistí, či správa prejde
-        }
-
-        // 2. Skontrolujeme, či bol limit prekročený (blokujeme 39. správu)
-        if (count >= MAX_MESSAGES_PER_HOUR) {
-            // Limit je prekročený
-            const timeLeftMs = resetTime - now;
-            const minutesLeft = Math.ceil(timeLeftMs / (60 * 1000));
-            
-            // Zobrazenie chybovej správy v chate (Custom UI, nie alert)
-            const resetTimeFormatted = new Date(resetTime).toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
-            const errorMessage = `**LIMIT PREKROČENÝ.** Bol dosiahnutý limit ${MAX_MESSAGES_PER_HOUR} správ za hodinu. Skúste to znova za približne **${minutesLeft} minút** (reset o ${resetTimeFormatted}).`;
-            displayMessage(errorMessage, 'ai');
-            
-            updateLimitStatusDisplay(); // Aktualizujeme zobrazenie, že je zablokované
-            return false; // Blokovať odoslanie správy
-        }
-
-        // 3. Limit nie je prekročený, zvýšime počítadlo a uložíme stav
-        count++;
+        let timestamps = [];
         
-        // Ak je to prvá správa, musíme zabezpečiť, že resetTime je nastavený
-        if (count === 1) { 
-            if (resetTime === 0 || now >= resetTime) {
-                resetTime = now + LIMIT_WINDOW_MS;
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                // Skúsime parsovať. Ak zlyhá, začneme s prázdnym poľom.
+                timestamps = JSON.parse(stored);
+                if (!Array.isArray(timestamps)) {
+                    timestamps = [];
+                }
             }
+        } catch (e) {
+            console.error("Chyba pri čítaní localStorage:", e);
+            timestamps = [];
         }
 
-        updateLimitData(count, resetTime); // Uložíme nový stav po úspešnej kontrole
-        updateLimitStatusDisplay(); // Aktualizujeme zobrazenie, že počet správ sa zvýšil
-        return true; // Povoliť odoslanie správy
+        // 1. Filtrujeme staré správy mimo okna
+        let recentTimestamps = timestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
+
+        // 2. Aktualizujeme UI a získame zostávajúci počet správ
+        const messagesRemaining = updateLimitStatusDisplay(recentTimestamps);
+
+        if (messagesRemaining > 0) {
+            // 3. Ak je povolené, pridáme novú správu a uložíme
+            recentTimestamps.push(now);
+            
+            try {
+                // Uložíme zoznam platných časových pečiatok vrátane novej
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(recentTimestamps));
+            } catch (e) {
+                console.error("Chyba pri zápise do localStorage:", e);
+            }
+            
+            // Znova aktualizujeme UI, aby sme zohľadnili novú správu
+            updateLimitStatusDisplay(recentTimestamps); 
+            return true; 
+        } else {
+            // Limit bol prekročený, UI bola aktualizovaná v updateLimitStatusDisplay
+            return false;
+        }
     }
 
     // --- API Configuration and Global Variables ---
@@ -345,8 +349,8 @@
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // Nechajte prázdne, ak ho poskytuje prostredie Canvas.
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Používame špičkový model na veľmi zložité veci, ktorý je pre užívateľa označený ako "V5"
-    const modelName = 'gemini-2.5-pro';
+    // Zmena modelu na štandardný (flash) pre riešenie chyby 403 (prístupové práva/autorizácia).
+    const modelName = 'gemini-2.5-flash-preview-05-20';
     const apiUrl = `${apiUrlBase}${modelName}:generateContent?key=${apiKey}`;
 
     // Systémové inštrukcie pre pokročilú AI (definujú jej osobnosť a štýl)
@@ -371,7 +375,16 @@
         bubble.className = `message-bubble ${sender === 'user' ? 'user-message' : 'ai-message'}`;
         
         // Konvertujeme Markdown na HTML pre lepšiu čitateľnosť AI odpovedí
-        const formattedText = marked.parse(text); 
+        let formattedText;
+        // Zabezpečenie: Použijeme marked.parse() len ak je objekt 'marked' definovaný.
+        if (typeof marked !== 'undefined') {
+            formattedText = marked.parse(text); 
+        } else {
+            // Záložný mechanizmus: Ak marked zlyhá, použijeme len základný text s prevodom riadkov.
+            formattedText = `<p>${text.replace(/\n/g, '<br>')}</p>`; 
+            console.warn("Markdown knižnica 'marked' nebola načítaná, používa sa záložný textový formát.");
+        }
+        
         bubble.innerHTML = formattedText;
 
         // Pridanie zdrojov (grounding) pre AI odpovede
@@ -425,9 +438,9 @@
         const userQuery = input.value.trim();
         if (!userQuery) return;
 
-        // KONTROLA LIMITU: Ak je limit prekročený, ukončíme funkciu
+        // KONTROLA LIMITU: Terajší kód kontroluje a aplikuje limit
         if (!checkAndApplyRateLimit()) {
-            input.value = ''; // Vyčistíme vstup po neúspešnom pokuse
+            input.value = ''; 
             return;
         }
 
@@ -463,6 +476,8 @@
                         await delay(attempt);
                         continue;
                     }
+                    // Pridanie logovania pre lepšiu diagnostiku
+                    console.error("API Error Response Status:", response.status, "Text:", await response.text());
                     throw new Error(`HTTP chyba: ${response.status}`);
                 }
 
@@ -512,19 +527,24 @@
     }
     
     // --- External Library for Markdown Rendering ---
-    // Knižnica je načítaná staticky v <head> sekcii.
+    // Knižnica je načítaná staticky na konci <body>.
 
 
-    // --- Event Listener ---
-    form.addEventListener('submit', sendMessage);
+    // --- Event Listener bol presunutý do window.onload ---
 
     // Spustenie 3D animácie po načítaní okna a inicializácia stavu limitu
     window.onload = function () {
         init3D();
         animate3D();
-        updateLimitStatusDisplay(); // Zobrazí aktuálny stav limitu hneď po načítaní
+        // Inicializácia zobrazenia limitu pri načítaní
+        checkAndApplyRateLimit(); 
+
+        // DÔLEŽITÉ: Listener na odoslanie formulára pridávame až po načítaní všetkých skriptov!
+        form.addEventListener('submit', sendMessage);
     }
 
 </script>
 </body>
 </html>
+
+
