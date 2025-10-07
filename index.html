@@ -319,8 +319,8 @@
     window.rateLimitTimeout = null; 
 
     /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia objekt so stavom.
-     * @returns {object} { remaining: number, timeUntilReset: number }
-     */
+      * @returns {object} { remaining: number, timeUntilReset: number }
+      */
     function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
         // Odfiltruje len tie timestampy, ktoré sú ešte v rámci hodinového okna.
@@ -360,11 +360,11 @@
     }
 
     /**
-     * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
-     * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
-     * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
-     * @returns {boolean} True, ak je povolené odoslať správu.
-     */
+      * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
+      * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
+      * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
+      * @returns {boolean} True, ak je povolené odoslať správu.
+      */
     function checkAndApplyRateLimit(apply = false) { 
         const now = Date.now();
         let timestamps = [];
@@ -524,8 +524,8 @@
     }
 
     /**
-     * NOVÁ FUNKCIA: Skopíruje text do schránky a zmení text tlačidla.
-     */
+      * Skopíruje text do schránky a zmení text tlačidla.
+      */
     function copyToClipboard(button, textToCopy) {
         // Použitie document.execCommand('copy') pre kompatibilitu v iFrame
         const textarea = document.createElement('textarea');
@@ -720,6 +720,7 @@ ${aiCode}
             }
         }
         setLoading(false);
+        checkAndApplyRateLimit(false); // Aktualizuje limit displej po ukončení
     }
     
     /** Spracuje odoslanie textovej chatovej otázky. */
@@ -802,76 +803,51 @@ ${aiCode}
                 console.error("Chyba počas volania API:", error);
                 
                 if (attempt === maxRetries) {
-                    const errorMessage = `Nastala kritická chyba pri komunikácii s AI po ${maxRetries} pokusoch. (${error.message})`;
+                    const errorMessage = `KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`;
                     displayMessage(errorMessage, 'ai');
                 }
             }
         }
-
         setLoading(false);
+        checkAndApplyRateLimit(false); // Aktualizuje limit displej po ukončení
     }
-    
-    // --- Spustenie aplikácie a event listenery ---
 
-    window.onload = function () {
+    // --- Event Listeners and Initialization ---
+    
+    // Obsluha odoslania formulára pre štandardný chat
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const userQuery = input.value.trim();
+        if (userQuery) {
+            sendChatQuery(userQuery);
+        }
+    });
+
+    // Obsluha pre tlačidlo "Generovať 3D Model"
+    send3DModelButton.addEventListener('click', function() {
+        const userPrompt = input.value.trim();
+        if (userPrompt) {
+            generate3DModelCode(userPrompt);
+        } else {
+            displayMessage("Prosím, zadajte popis 3D modelu (napr. Zlatá špirálová veža) do textového poľa.", 'ai');
+        }
+    });
+
+    // Spustenie 3D pozadia a kontrola limitov pri načítaní
+    window.onload = function() {
         init3D();
         animate3D();
+        checkAndApplyRateLimit(false); // Inicializačná kontrola limitu
         
-        // Pri štarte len skontrolujeme limit bez aplikácie (apply=false)
-        checkAndApplyRateLimit(false); 
-        
-        // Listener pre tlačidlo CHAT (Odoslať)
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const userQuery = input.value.trim();
-            if (!userQuery) return;
-            
-            if (!apiKey) {
-                displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
-                return;
-            }
-            sendChatQuery(userQuery);
-        });
-
-        // Listener pre tlačidlo 3D MODEL (Generovať 3D Model)
-        send3DModelButton.addEventListener('click', async () => {
-            const userPrompt = input.value.trim();
-            
-            if (!userPrompt) {
-                displayMessage("Prosím, zadajte podrobný popis 3D modelu, ktorý má AI vygenerovať v Lua kóde.", 'ai');
-                return;
-            }
-
-            if (!apiKey) {
-                displayMessage("CHYBA: API kľúč nie je nastavený. (Nedostatočná autorizácia)", 'ai');
-                return;
-            }
-            
-            await generate3DModelCode(userPrompt);
-        });
-
-
-        // Prečítanie úvodnej správy po načítaní hlasov
-        const initialMessageText = "Vitaj! Model bol aktualizovaný pre Generovanie 3D modelov v Lua. Zadajte presný popis modelu a kliknite na Generovať 3D Model.";
-        if (synth.onvoiceschanged !== undefined) {
-            synth.onvoiceschanged = () => {
-                populateVoiceList();
-                if (messagesDiv.children.length === 1) { 
-                     speakText(initialMessageText);
-                }
-            };
-        } else {
-            setTimeout(() => {
-                if (messagesDiv.children.length === 1) { 
-                     speakText(initialMessageText);
-                }
-            }, 500);
-        }
+        // Nastavíme interval pre pravidelnú aktualizáciu limitu (každých 5 sekúnd)
+        setInterval(() => {
+            checkAndApplyRateLimit(false);
+        }, 5000); 
     }
-
 </script>
 </body>
 </html>
+
 
 
 
