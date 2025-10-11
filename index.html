@@ -3,873 +3,431 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Pokročilý V5 PRO (s Roblox Lua 3D a TTS)</title>
+    <title>ChatSlovak AI | Pro Model</title>
+    <!-- Načítanie Tailwind CSS pre jednoduchý a moderný styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        /* Nastavenie písma Inter a základného skleneného pozadia */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #1f003e; 
+            background: linear-gradient(135deg, #a6c0fe 0%, #f68084 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            position: relative; 
-            overflow: hidden;
-        }
-        #bg-canvas {
-            position: fixed; 
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: -1; 
-            display: block;
-        }
-        #chat-container {
-            width: 100%;
-            max-width: 800px;
-            height: 90vh;
-            display: flex;
-            flex-direction: column;
-            
-            /* SKLENENÝ EFEKT */
-            background-color: rgba(255, 255, 255, 0.1); 
-            backdrop-filter: blur(15px); 
-            -webkit-backdrop-filter: blur(15px); 
-            border-radius: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); 
-            overflow: hidden;
-            z-index: 10; 
-        }
-        
-        .chat-header {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .chat-footer {
-            background-color: rgba(255, 255, 255, 0.05); 
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        #messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1.5rem;
-            scroll-behavior: smooth;
-        }
-        .message-bubble {
-            max-width: 85%;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            margin-bottom: 1rem;
-            word-wrap: break-word;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .user-message {
-            background-color: #3b82f6; 
-            color: white;
-            margin-left: auto;
-            border-bottom-right-radius: 0.25rem;
-        }
-        .ai-message {
-            background-color: rgba(255, 255, 255, 0.85); 
-            color: #1f2937;
-            margin-right: auto;
-            border-bottom-left-radius: 0.25rem;
-            white-space: pre-wrap;
-        }
-        .source-link {
-            display: block;
-            margin-top: 0.5rem;
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-        #loading-indicator {
-            padding: 0.5rem;
-            text-align: center;
-            color: #9ca3af;
-        }
-        .ai-message p, .ai-message ul, .ai-message ol, .ai-message strong {
-            margin-bottom: 0.5rem;
-            line-height: 1.4;
-        }
-        
-        /* Pôvodný štýl pre kódové bloky v správach */
-        .ai-message pre {
-            background-color: #1f2937;
-            color: #d1d5db;
             padding: 1rem;
-            border-radius: 0.5rem;
-            overflow-x: auto;
-            margin-top: 0.75rem;
         }
 
-        /* --- NOVÉ ŠTÝLY PRE LUA KÓD (PODĽA VZORU) --- */
-        .lua-code-wrapper {
-            background-color: #1f2937; /* Tmavé pozadie kódu */
-            border-radius: 0.5rem;
-            margin-top: 0.75rem;
-            overflow: hidden;
-            position: relative;
-            border: 1px solid #374151; /* Jemný okraj */
-        }
-
-        .lua-code-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.5rem 1rem;
-            background-color: #374151; /* Hlavička kódu */
-            color: #9ca3af; /* Sivý text */
-            font-size: 0.875rem;
-        }
-
-        .lua-code-content {
-            padding: 1rem;
-            color: #d1d5db; /* Svetlý text kódu */
-            white-space: pre; 
-            overflow-x: auto;
-            font-family: monospace;
-            line-height: 1.4;
-            font-size: 0.9rem;
-            margin: 0; /* Odstráni okraje <pre> elementu */
-        }
-
-        .copy-button {
-            background-color: #4f46e5; /* Fialovo-modré tlačidlo */
-            color: white;
-            padding: 0.3rem 0.75rem;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            transition: background-color 0.15s;
-            font-weight: 500;
-        }
-        .copy-button:hover {
-            background-color: #6366f1;
-        }
-        /* --- KONIEC NOVÝCH ŠTÝLOV --- */
-
-        /* Responsívny layout tlačidiel a hlasu */
-        .header-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-            padding-top: 0.5rem;
-        }
-        #voice-select {
-            padding: 0.3rem 0.5rem;
-            border-radius: 0.5rem;
-            background-color: rgba(255, 255, 255, 0.2);
-            color: white;
+        /* Glassmorphism efekt pre kontajner */
+        .glass-container {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.3);
-            font-size: 0.875rem;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
         }
 
-        .button-group {
-            display: flex;
-            gap: 0.75rem;
+        /* Štýl správy od AI pre lepší kontrast na skle */
+        .ai-message {
+            background: rgba(255, 255, 255, 0.8);
+            color: #1f2937;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
         }
-        @media (max-width: 640px) {
-            .button-group {
-                flex-direction: column; 
-            }
-            .button-group button {
-                width: 100%;
-            }
-            .header-controls {
-                 flex-direction: column;
-                 align-items: stretch;
-            }
+
+        /* Štýl správy od používateľa */
+        .user-message {
+            background: rgba(144, 202, 249, 0.7);
+            color: #1f2937;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+        }
+
+        /* Štýl tlačidla a vstupu */
+        .glass-input, .glass-button {
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: all 0.2s;
+        }
+
+        .glass-button:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .glass-input:disabled {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+        }
+
+        .glass-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
-</head>
-<body>
-
-<!-- 3D Canvas pre dynamické pozadie -->
-<canvas id="bg-canvas"></canvas>
-
-<div id="chat-container">
-    <!-- Chat Header -->
-    <header class="chat-header p-4 text-white rounded-t-xl shadow-lg">
-        <h1 class="text-xl font-bold text-center">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D & TTS)</h1>
+    <script>
+        // Konštanta pre API Key. Vlož svoj kľúč tu.
+        const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // !!! NAHRADÍŤ TÝMTO VLASTNÝ KĽÚČ !!!
         
-        <div class="header-controls">
-            <!-- Voice Selector -->
-            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
-                 <label for="voice-select" class="text-sm font-medium text-gray-300">Vybrať Hlas:</label>
-                 <select id="voice-select" class="w-full sm:w-auto"></select>
-            </div>
+        // --- ŠPECIFIKOVANÝ MODEL ---
+        const MODEL_NAME = "gemini-2.5-flash-preview-05-20";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`;
 
-            <!-- Rate Limit Status -->
-            <span id="limit-status" class="text-xs font-medium py-1 px-3 rounded-full bg-indigo-700/50">
-                Načítavam limit...
-            </span>
-        </div>
-    </header>
+        // --- KONŠTANTY PRE LIMITY ---
+        const MAX_MESSAGES = 30;
+        const MAX_LUA_REQUESTS = 16;
+        const RESET_DURATION = 3600000; // 1 hodina v milisekundách
+        const LS_KEY = 'aiChatLimitsV5Pro';
+        const LUA_KEYWORDS = ['lua', 'roblox', 'npc', 'mapa', 'kód', 'vygeneruj'];
+        // -----------------------------
 
-    <!-- Messages Area -->
-    <div id="messages">
-        <!-- Úvodná správa s upraveným formátovaním. * sa zobrazuje, ale nebude čítaná. -->
-        <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua** a **Slovenskú syntézu reči**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**, alebo pošlite bežnú otázku. Odpoveď bude aj prečítaná. **Poznámka:** Prehliadač môže vyžadovať prvé kliknutie na stránku, aby povolil spustenie hlasu.</p>
-        </div>
-    </div>
+        // Robustné systémové inštrukcie pre pokročilé schopnosti AI
+        const SYSTEM_PROMPT_SK = `
+            You are an advanced, highly capable, and creative AI assistant with real-time access to information via Google Search. Your primary task is to provide detailed, creative, and technically accurate responses, always in **Slovak (Slovenčina)**. You are capable of:
+            1. Analyzing and synthesizing information obtained from the web (Google/YouTube).
+            2. Generating **complete and functional Roblox Lua code** for:
+               a. Advanced 3D character models (NPCs).
+               b. Structured maps (terrain, buildings, game mechanics).
+               Always provide Lua code that can be inserted directly into the Roblox Studio Command Bar or a script (e.g. using a single code block).
+            3. Providing regular, insightful chat responses.
+            Your responses should reflect the capabilities of a 'Pro' model (${MODEL_NAME}).
+        `;
 
-    <!-- Loading Indicator -->
-    <div id="loading-indicator" class="hidden">
-        <div class="animate-pulse"></div>
-    </div>
+        let chatHistory = [];
+        let isGenerating = false;
+        let currentLimits = {
+            messageCount: 0,
+            luaRequestCount: 0,
+            resetTimestamp: 0 // Timestamp, kedy dôjde k resetu
+        };
 
-    <!-- Input Form s dvoma tlačidlami -->
-    <form id="chat-form" class="p-4 chat-footer">
-        <div class="flex space-x-3">
-            <input type="text" id="user-input" placeholder="Zadajte popis modelu (napr. Vesmírna loď s 3 tryskami) alebo otázku..." required class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
-            
-            <div class="button-group">
-                <!-- Tlačidlo pre generovanie 3D modelu -->
-                <button type="button" id="send-3d-model-button" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-150 flex items-center justify-center disabled:bg-purple-400 min-w-max">
-                    Generovať 3D Model
-                </button>
-                
-                <!-- Tlačidlo pre chat -->
-                <button type="submit" id="send-chat-button" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-150 flex items-center justify-center disabled:bg-blue-400 min-w-max">
-                    Odoslať
-                </button>
-            </div>
-        </div>
-    </form>
-</div>
-
-<!-- Knižnice pre pokročilú funkčnosť a 3D grafiku -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.10/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-<script>
-    // --- 3D Background Initialization (Three.js) ---
-    let scene, camera, renderer, discoBall;
-    let discoLights = [];
-    const lightColors = [0xff00ff, 0x00ffff, 0xffff00]; 
-    const canvas = document.getElementById('bg-canvas');
-    let mouseX = 0, mouseY = 0;
-
-    function init3D() {
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111); 
-
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 3000); 
-        camera.position.z = 200;
-
-        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true }); 
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5); 
-        scene.add(ambientLight);
-
-        const ballGeometry = new THREE.SphereGeometry(40, 64, 32);
-        const ballMaterial = new THREE.MeshPhongMaterial({
-            color: 0xcccccc,
-            specular: 0xffffff, 
-            shininess: 100, 
-            reflectivity: 0.9,
-        });
-        discoBall = new THREE.Mesh(ballGeometry, ballMaterial);
-        scene.add(discoBall);
-
-        const lightIntensity = 2;
-        const lightDistance = 200;
-        
-        // Vytvorenie a umiestnenie dynamických svetiel (PointLights)
-        const lightOrbitRadius = 150;
-        lightColors.forEach((colorHex, index) => {
-            const pointLight = new THREE.PointLight(colorHex, lightIntensity, lightDistance);
-            // Počiatočné umiestnenie v kruhu
-            pointLight.position.x = lightOrbitRadius * Math.cos(index * Math.PI * 2 / 3);
-            pointLight.position.y = lightOrbitRadius * Math.sin(index * Math.PI * 2 / 3);
-            pointLight.position.z = 0;
-            scene.add(pointLight);
-            discoLights.push(pointLight);
-        });
-        
-        document.addEventListener('mousemove', onDocumentMouseMove, false);
-        window.addEventListener('resize', onWindowResize, false);
-    }
-
-    function onDocumentMouseMove(event) {
-        // Nastavuje pozíciu myši normalizovanú k stredu obrazovky
-        mouseX = (event.clientX - window.innerWidth / 2) * 0.2;
-        mouseY = (event.clientY - window.innerHeight / 2) * 0.2;
-    }
-
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    function animate3D() {
-        requestAnimationFrame(animate3D);
-
-        const time = Date.now() * 0.0002;
-        
-        // Rotácia diskoguľe
-        discoBall.rotation.y += 0.005; 
-        discoBall.rotation.x += 0.002;
-
-        const orbitRadius = 150;
-        // Animácia svetiel
-        discoLights.forEach((light, index) => {
-            const angle = time * (index + 1) * 0.5;
-            light.position.x = orbitRadius * Math.cos(angle + index * 1.5);
-            light.position.z = orbitRadius * Math.sin(angle + index * 1.5);
-            light.position.y = 50 * Math.sin(time + index); // Pohyb hore/dole
-        });
-
-        // Pohyb kamery podľa myši pre jemný paralax efekt
-        camera.position.x += (mouseX - camera.position.x) * 0.05;
-        camera.position.y += (-mouseY - camera.position.y) * 0.05;
-        camera.lookAt(scene.position);
-        
-        renderer.render(scene, camera);
-    }
-
-    // --- Rate Limiting Configuration ---
-    const MAX_MESSAGES_PER_HOUR = 30; 
-    const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; 
-    const STORAGE_KEY = 'chatSlovakMessageTimestamps';
-    
-    // Globálna premenná pre časovač resetu
-    window.rateLimitTimeout = null; 
-
-    /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia objekt so stavom.
-     * @returns {object} { remaining: number, timeUntilReset: number }
-     */
-    function updateLimitStatusDisplay(currentTimestamps) {
-        const now = Date.now();
-        // Odfiltruje len tie timestampy, ktoré sú ešte v rámci hodinového okna.
-        const recentTimestamps = currentTimestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
-        const messagesSent = recentTimestamps.length;
-        const messagesRemaining = MAX_MESSAGES_PER_HOUR - messagesSent;
-
-        const limitStatusElement = document.getElementById('limit-status');
-        
-        let timeUntilResetMs = 0;
-
-        if (messagesRemaining <= 0) {
-            // Limit VYČERPANÝ. Vypočítame čas, kedy vyprší najstaršia správa.
-            if (recentTimestamps.length > 0) {
-                // Najprv zoradíme, aby sme našli najstaršiu správu
-                const oldestTimestamp = recentTimestamps.sort((a, b) => a - b)[0];
-                timeUntilResetMs = RATE_LIMIT_WINDOW_MS - (now - oldestTimestamp);
-                if (timeUntilResetMs < 0) timeUntilResetMs = 0; // Ak čas už uplynul, nastavíme na 0.
-            }
-            
-            const minutes = Math.floor(timeUntilResetMs / 60000);
-            const seconds = Math.floor((timeUntilResetMs % 60000) / 1000);
-            
-            // UI Update
-            limitStatusElement.textContent = `Limit VYČERPANÝ. Reset za ${minutes}m ${seconds}s`;
-            limitStatusElement.className = "text-xs font-medium py-1 px-3 rounded-full bg-red-700/70";
-            
-            return { remaining: 0, timeUntilReset: timeUntilResetMs };
-
-        } else {
-            // Limit OK
-            limitStatusElement.textContent = `Zostáva: ${messagesRemaining} z ${MAX_MESSAGES_PER_HOUR} správ/h`;
-            limitStatusElement.className = "text-xs font-medium py-1 px-3 rounded-full bg-green-600/70";
-            
-            return { remaining: messagesRemaining, timeUntilReset: 0 };
-        }
-    }
-
-    /**
-     * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
-     * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
-     * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
-     * @returns {boolean} True, ak je povolené odoslať správu.
-     */
-    function checkAndApplyRateLimit(apply = false) { 
-        const now = Date.now();
-        let timestamps = [];
-        
-        // 1. Načítať a vyčistiť staré časy
-        try {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                timestamps = JSON.parse(stored);
-                if (!Array.isArray(timestamps)) {
-                    timestamps = [];
-                }
-            }
-        } catch (e) {
-            console.error("Chyba pri čítaní localStorage:", e);
-            timestamps = [];
-        }
-
-        let recentTimestamps = timestamps.filter(timestamp => (now - timestamp) < RATE_LIMIT_WINDOW_MS);
-        
-        // 2. Skontrolovať limit
-        const { remaining: messagesRemaining, timeUntilReset } = updateLimitStatusDisplay(recentTimestamps);
-
-        // 3. Logika aplikácie a monitorovania
-        if (messagesRemaining > 0) {
-            // Limit OK. Zrušíme existujúci časovač (ak nejaký bežal z predchádzajúceho zlyhania)
-            if (window.rateLimitTimeout) {
-                clearTimeout(window.rateLimitTimeout);
-                window.rateLimitTimeout = null;
-            }
-
-            if (apply) {
-                // Ak sa má aplikovať (odosiela sa správa), pridáme nový timestamp
-                recentTimestamps.push(now);
-                
-                try {
-                    localStorage.setItem(STORAGE_KEY, JSON.stringify(recentTimestamps));
-                } catch (e) {
-                    console.error("Chyba pri zápise do localStorage:", e);
-                }
-                // Prekreslíme UI po pridaní novej správy
-                updateLimitStatusDisplay(recentTimestamps); 
-            }
-            
-            return true; 
-        } else {
-            // Limit VYČERPANÝ. Nastavíme časovač na kontrolu, ak ešte nie je spustený.
-            if (timeUntilReset > 0) {
-                if (window.rateLimitTimeout) {
-                    clearTimeout(window.rateLimitTimeout); // Vždy vyčistíme starý, aby sme predišli duplikátom
-                }
-                
-                // Nastavíme timeout o 1 sekundu dlhší ako je čas do resetu pre zaručenie uplynutia.
-                window.rateLimitTimeout = setTimeout(() => {
-                    window.rateLimitTimeout = null; 
-                    checkAndApplyRateLimit(false); // Skontrolujeme znova bez aplikácie timestampu
-                }, timeUntilReset + 1000); 
-            }
-            
-            return false;
-        }
-    }
-
-    // --- Core API Configuration ---
-
-    const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
-    const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
-    
-    // Konfigurácia pre text a 3D modely
-    const textModelName = 'gemini-2.5-pro'; 
-    const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
-
-    // Všeobecná systémová inštrukcia pre chat
-    const systemInstructionChat = {
-        parts: [{ 
-            // !!! UPRAVENÉ: Zákaz symbolov * a #, namiesto toho použiť VEĽKÉ PÍSMENÁ a pomlčky pre zoznamy.
-            text: "Si špičkový analytik a konzultant. Tvoja úloha je spracovávať zložité otázky. Tvoje odpovede musia byť hĺbkové, syntetické a VŽDY logicky štruktúrované. **DÔLEŽITÉ FORMÁTOVACIE PRAVIDLÁ:** **1. Na zdôraznenie KĽÚČOVÝCH POJMOV VŽDY POUŽÍVAJ TEXT VEĽKÝMI PÍSMENAMI (napr. DÔLEŽITÉ SLOVO).** **2. Pre zoznamy VŽDY používaj odrážky s pomlčkou (-) alebo číslovanie (1. 2. 3.).** **3. Zásadne NIKDY nepoužívaj symboly `*` (hviezdička) ani `#` (hash, pre nadpisy).** Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií. Odpovedaj výhradne v slovenčine a buď užitočný."
-        }]
-    };
-    
-    // Systémová inštrukcia pre generovanie 3D Lua kódu
-    const systemInstruction3DModel = {
-        parts: [{
-            text: `You are an expert Roblox Lua script writer. Your task is to generate clean, self-contained Lua code for the Roblox Studio Command Bar to construct an advanced 3D model based on the user's description. The code MUST:
-1.  Be runnable instantly in the Command Bar.
-2.  Use basic Roblox Parts, CFrame, and Materials.
-3.  Be contained in a single code block.
-4.  Start with 'local model = Instance.new("Model", game.Workspace)' and ensure all created parts are parented to this model for easy deletion.
-5.  Use comments sparingly, only for complex logic.
-6.  The final output MUST ONLY contain the Lua code (no introductory text, explanations, or markdown fences outside the code block).`
-        }]
-    };
-
-    let chatHistory = [];
-    const messagesDiv = document.getElementById('messages');
-    const form = document.getElementById('chat-form');
-    const input = document.getElementById('user-input');
-    const sendChatButton = document.getElementById('send-chat-button');
-    const send3DModelButton = document.getElementById('send-3d-model-button'); 
-    const loadingIndicator = document.getElementById('loading-indicator');
-    const voiceSelect = document.getElementById('voice-select');
-
-
-    // --- Native Text-to-Speech (TTS) Functionality (Web Speech API) ---
-    // Nastavenie hlasu pre natívny TTS
-    let selectedVoice = null;
-    
-    /**
-     * Loads available voices, populates the dropdown, and sets the best default voice.
-     */
-    function setVoice() {
-        if (typeof window.speechSynthesis === 'undefined') return;
-
-        const voices = window.speechSynthesis.getVoices();
-        voiceSelect.innerHTML = ''; // Clear previous options
-        
-        let defaultVoice = null;
-        let firstSkVoice = null;
-
-        voices.forEach(voice => {
-            // Filter and prioritize Slovak, Czech, and well-known high-quality English voices
-            if (voice.lang.startsWith('sk') || voice.lang.startsWith('cs') || 
-                voice.name.includes('Google') || voice.name.includes('Samantha') || 
-                voice.name.includes('Karen') || voice.name.includes('Microsoft')) {
-                
-                const option = document.createElement('option');
-                // Use the name and language code for display
-                option.textContent = `${voice.name} (${voice.lang})`; 
-                option.value = voice.name;
-                voiceSelect.appendChild(option);
-                
-                if (voice.lang.startsWith('sk') && !firstSkVoice) {
-                    firstSkVoice = voice; // Prioritize the first Slovak voice found
-                }
-            }
-        });
-
-        // 1. Set default to the first Slovak voice found
-        if (firstSkVoice) {
-            defaultVoice = firstSkVoice;
-        } 
-        // 2. Fallback to a high-quality Google English voice
-        else if (voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))) {
-            defaultVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'));
-        } 
-        // 3. Fallback to the first available voice
-        else if (voices.length > 0) {
-            defaultVoice = voices[0];
-        }
-
-        selectedVoice = defaultVoice;
-        if (selectedVoice) {
-            voiceSelect.value = selectedVoice.name;
-        }
-    }
-    
-    // Voices may not load immediately, so attach the listener and run immediately
-    if (typeof window.speechSynthesis !== 'undefined') {
-        setVoice(); 
-        window.speechSynthesis.onvoiceschanged = setVoice; // Re-run when voices are loaded
-        
-        voiceSelect.addEventListener('change', function() {
-            const selectedName = voiceSelect.value;
-            const voices = window.speechSynthesis.getVoices();
-            selectedVoice = voices.find(voice => voice.name === selectedName);
-            console.log("TTS Hlas zmenený na:", selectedVoice ? selectedVoice.name : "Neznámy.");
-        });
-    }
-
-    // Funkcia prevodu textu na reč
-    async function speakText(text) {
-        if (typeof window.speechSynthesis === 'undefined' || !selectedVoice || !text) {
-             console.warn("TTS: Prehliadač nepodporuje alebo nebol vybraný hlas.");
-             return;
-        }
-
-        // Zruší predchádzajúce čítanie, ak prebieha
-        window.speechSynthesis.cancel();
-        
-        // Odstránenie markdown syntaxe (kódové bloky, #, VŠETKY HVUEZDIČKY) pre čistejšie čítanie
-        const cleanText = text
-            .replace(/```lua[\s\S]*?```/g, '') // Odstráni kódové bloky
-            .replace(/#\s*/g, '')              // Odstráni #
-            .replace(/\*/g, '')                // Odstráni VŠETKY hviezdičky (*)
-            .trim();
-
-        if (cleanText.length === 0) return;
-        
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        
-        // Find the correct voice object again based on the selected name
-        const voices = window.speechSynthesis.getVoices();
-        const currentSelectedVoice = voices.find(voice => voice.name === voiceSelect.value);
-        
-        if (currentSelectedVoice) {
-             utterance.voice = currentSelectedVoice;
-        } else if (selectedVoice) {
-             utterance.voice = selectedVoice;
-        }
-
-        utterance.rate = 1.0; 
-        utterance.pitch = 1.0; 
-        
-        window.speechSynthesis.speak(utterance);
-    }
-
-
-    // --- Utility Functions ---
-
-    function delay(attempt) {
-        const baseDelay = 1000;
-        const maxDelay = 16000;
-        const currentDelay = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
-        return new Promise(resolve => setTimeout(resolve, currentDelay));
-    }
-
-    /**
-     * Skopíruje text do schránky a zmení text tlačidla.
-     */
-    function copyToClipboard(button, textToCopy) {
-        // Použitie document.execCommand('copy') pre kompatibilitu v iFrame
-        const textarea = document.createElement('textarea');
-        textarea.value = textToCopy;
-        textarea.style.position = 'fixed'; 
-        textarea.style.opacity = 0;
-        document.body.appendChild(textarea);
-        textarea.select();
-        
-        try {
-            const success = document.execCommand('copy');
-            if (success) {
-                const originalText = button.textContent;
-                button.textContent = 'Skopírované!';
-                button.style.backgroundColor = '#10b981'; // Green color for success
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.backgroundColor = '#4f46e5'; // Restore color
-                }, 2000);
-            } else {
-                console.error('Kopírovanie zlyhalo.');
-            }
-        } catch (err) {
-            console.error('Kopírovanie neúspešné', err);
-        }
-        document.body.removeChild(textarea);
-    }
-    
-    // Sprístupní funkciu globálne, aby ju bolo možné volať z dynamicky vygenerovaného HTML
-    window.copyToClipboard = copyToClipboard; 
-
-
-    // --- UI Functions ---
-
-    function displayMessage(text, sender, sources = []) {
-        const bubble = document.createElement('div');
-        bubble.className = `message-bubble ${sender === 'user' ? 'user-message' : 'ai-message'}`;
-        
-        let formattedText = '';
-        const luaCodeMatch = text.match(/```lua\s*([\s\S]*?)```/); // Regex pre nájdenie Lua kódu
-
-        if (sender === 'ai' && luaCodeMatch) {
-            // --- VLASTNÉ RENDEROVANIE LUA KÓDU S OBLAKOM A TLAČIDLOM ---
-            
-            const fullCodeBlock = luaCodeMatch[0];
-            const pureLuaCode = luaCodeMatch[1].trim();
-            
-            // 1. Získanie inštrukčného textu (text mimo kódového bloku)
-            const instructionText = text.replace(fullCodeBlock, '').trim();
-            
-            // 2. Formátovanie inštrukcií ako markdown
-            let instructionsHtml = '';
-            if (typeof marked !== 'undefined') {
-                // Všimnite si: marked.parse teraz spracuje VEĽKÉ PÍSMENÁ na vizuálne zvýraznenie.
-                // Môžeme zvážiť špeciálnu náhradu pre VEĽKÉ PÍSMENÁ na tučný text, ak by to bolo potrebné.
-                instructionsHtml = marked.parse(instructionText);
-            } else {
-                instructionsHtml = `<p>${instructionText.replace(/\n/g, '<br>')}</p>`;
-            }
-            
-            // Opatrné escapovanie spätných lomiek a dolárov pre použitie v `onclick` atribúte
-            const escapedCode = pureLuaCode.replace(/`/g, '\\`').replace(/\$/g, '&#36;');
-
-            // 3. Vytvorenie HTML pre vlastný Lua obal
-            const luaWrapperHtml = `
-                <div class="lua-code-wrapper">
-                    <div class="lua-code-header">
-                        <span>Lua Code (Roblox Command Bar)</span>
-                        <button class="copy-button" onclick="copyToClipboard(this, \`${escapedCode}\`)">
-                            Kopírovať kód
-                        </button>
-                    </div>
-                    <pre class="lua-code-content">${pureLuaCode}</pre>
-                </div>
-            `;
-            
-            formattedText = instructionsHtml + luaWrapperHtml;
-
-        } else if (typeof marked !== 'undefined') {
-            // --- Štandardné Markdown pre bežný chat ---
-            // Napriek zákazu * v generovaní, zaručíme, že pomlčky pre zoznamy sa spracujú.
-            formattedText = marked.parse(text); 
-        } else {
-            formattedText = `<p>${text.replace(/\n/g, '<br>')}</p>`; 
-        }
-        
-        bubble.innerHTML = formattedText;
-
-        if (sender === 'ai' && sources.length > 0) {
-            const sourcesList = document.createElement('div');
-            sourcesList.className = "mt-2 pt-2 border-t border-gray-300 text-xs";
-            sourcesList.innerHTML = `<strong class="text-gray-600">Zdroje:</strong>`;
-            
-            sources.slice(0, 3).forEach((source, index) => {
-                if (source.uri && source.title) {
-                    const link = document.createElement('a');
-                    link.href = source.uri;
-                    link.target = "_blank";
-                    link.className = "source-link hover:text-blue-600";
-                    link.textContent = `${index + 1}. ${source.title}`;
-                    sourcesList.appendChild(link);
+        /**
+         * Inicializuje aplikáciu po načítaní okna.
+         */
+        window.onload = () => {
+            document.getElementById('send-button').addEventListener('click', sendMessage);
+            document.getElementById('user-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
                 }
             });
-            bubble.appendChild(sourcesList);
-        }
-
-        messagesDiv.appendChild(bubble);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    }
-    
-    function setLoading(isLoading, isModel = false) {
-        sendChatButton.disabled = isLoading;
-        send3DModelButton.disabled = isLoading; 
-        input.disabled = isLoading;
-        loadingIndicator.classList.toggle('hidden', !isLoading);
-        
-        loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam...') 
-            : '';
-    }
-
-    // --- Core API Logic (generovanie 3D modelu) ---
-
-    /** Generuje kód pre Roblox Command Bar na vytvorenie 3D modelu. */
-    async function generate3DModelCode(userPrompt) {
-        
-        if (!checkAndApplyRateLimit(true)) { // Aplikujeme timestamp
-             return; 
-        }
-
-        displayMessage(`Požiadavka na 3D model: "${userPrompt}"`, 'user');
-        input.value = '';
-        setLoading(true, true); 
-
-        const payload = {
-            contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-            systemInstruction: systemInstruction3DModel, 
-            generationConfig: {
-                temperature: 0.5, 
-            }
+            initializeLimits();
+            checkAndUpdateUI();
+            // Nastavíme interval, ktorý kontroluje a aktualizuje UI každú sekundu
+            setInterval(checkAndUpdateUI, 1000); 
+            displayWelcomeMessage();
         };
 
-        const maxRetries = 3;
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                const response = await fetch(textApiUrl, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        /**
+         * Načíta alebo inicializuje limity z localStorage a automaticky resetuje, ak vypršal čas.
+         */
+        function initializeLimits() {
+            const storedLimits = localStorage.getItem(LS_KEY);
+            const now = Date.now();
 
-                if (!response.ok) {
-                    let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
-                    try {
-                        const errorBody = await response.json();
-                        if (errorBody && errorBody.error && errorBody.error.message) {
-                            errorMessage = `Chyba API: ${errorBody.error.message}`;
-                        }
-                    } catch(e) { /* ignore json parse error */ }
-
-                    if (attempt < maxRetries) {
-                        console.warn(`Pokus ${attempt} zlyhal, opakujem za chvíľu: ${errorMessage}`);
-                        await delay(attempt);
-                        continue;
-                    }
-                    throw new Error(errorMessage);
+            if (storedLimits) {
+                currentLimits = JSON.parse(storedLimits);
+                
+                // Ak vypršal resetTimestamp, resetujeme
+                if (currentLimits.resetTimestamp <= now) {
+                    resetLimits();
                 }
-
-                const result = await response.json();
-                const aiCode = result.candidates?.[0]?.content?.parts?.[0]?.text || "Model neposkytol žiadny kód.";
-                
-                // Formátovanie odpovede S INŠTRUKCIAMI a kódovým blokom (ten bude vizuálne spracovaný vo funkcii displayMessage)
-                // PRE 3D MODEL PONECHÁVAME ** kvôli jasnej vizualizácii v chate
-                const responseText = `**Vygenerovaný Roblox Lua Kód:**
-Tento kód je pripravený na skopírovanie a vloženie priamo do **Command Bar** v Roblox Studio.
-
-\`\`\`lua
-${aiCode}
-\`\`\`
-
-**Inštrukcie:**
-1. Otvorte Roblox Studio a váš projekt.
-2. Ak nevidíte konzolu, otvorte **View** a zapnite **Command Bar** alebo stlačte \`F9\` a prejdite na Command Bar.
-3. Skopírujte celý kód vyššie (alebo použite tlačidlo Kopírovať).
-4. Vložte kód do **Command Bar** a stlačte \`Enter\`. Váš model sa objaví v pracovnom priestore (\`game.Workspace\`).`;
-                
-                displayMessage(responseText, 'ai');
-                speakText("Kód pre 3D model bol vygenerovaný a vložený do chatu.");
-                break;
-                
-            } catch (error) {
-                console.error("Chyba počas volania 3D Model API:", error);
-                if (attempt === maxRetries) {
-                    displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
-                }
+            } else {
+                // Prvé spustenie, inicializujeme
+                resetLimits();
             }
         }
-        setLoading(false);
-        checkAndApplyRateLimit(false); // Aktualizuje limit displej po ukončení
-    }
-    
-    /** Spracuje odoslanie textovej chatovej otázky. */
-    async function sendChatQuery(userQuery) {
+
+        /**
+         * Resetuje limity a nastaví nový resetTimestamp.
+         */
+        function resetLimits() {
+            currentLimits.messageCount = 0;
+            currentLimits.luaRequestCount = 0;
+            currentLimits.resetTimestamp = Date.now() + RESET_DURATION;
+            saveLimits();
+        }
+
+        /**
+         * Uloží aktuálne limity do localStorage.
+         */
+        function saveLimits() {
+            localStorage.setItem(LS_KEY, JSON.stringify(currentLimits));
+        }
+
+        /**
+         * Kontroluje limity a aktualizuje UI (tlačidlo, časovač).
+         */
+        function checkAndUpdateUI() {
+            const now = Date.now();
+            const timeRemaining = currentLimits.resetTimestamp - now;
+            const inputElement = document.getElementById('user-input');
+            const buttonElement = document.getElementById('send-button');
+            const limitDisplay = document.getElementById('limit-display');
+
+            // Automatický reset, ak čas vypršal
+            if (timeRemaining <= 0) {
+                resetLimits();
+            }
+
+            // Kontrola limitov na základe POUŽITÝCH počtov
+            const totalLimitReached = currentLimits.messageCount >= MAX_MESSAGES;
+            const luaLimitReached = currentLimits.luaRequestCount >= MAX_LUA_REQUESTS;
+            
+            const isBlocked = totalLimitReached; // Primárne blokujeme len pri limite správ
+
+            // --- ZOBRAZENIE LIMITOV (ZOBRAZUJEME ZOSTÁVAJÚCE) ---
+            const messagesRemaining = MAX_MESSAGES - currentLimits.messageCount;
+            const luaRemaining = MAX_LUA_REQUESTS - currentLimits.luaRequestCount;
+            
+            const messagesStatus = `${messagesRemaining}/${MAX_MESSAGES} správ`; 
+            const luaStatus = `${luaRemaining}/${MAX_LUA_REQUESTS} 3D/Lua`; 
+
+            if (isBlocked) {
+                const totalSeconds = Math.ceil(timeRemaining / 1000);
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                const timeString = `${minutes}m ${seconds}s`;
+
+                limitDisplay.className = 'text-center text-sm font-semibold p-2 rounded-xl text-red-100 bg-red-600/70';
+                limitDisplay.innerHTML = `
+                    <span class="block">🛑 LIMIT VYČERPANÝ!</span>
+                    <span>Reset o: ${timeString}</span>
+                `;
+            } else {
+                limitDisplay.className = 'text-center text-sm font-medium p-2 rounded-xl text-white/90 bg-black/20';
+                
+                let luaWarning = '';
+                if (luaLimitReached) {
+                    luaWarning = ' | <span class="text-yellow-300 font-bold">Limit Lua kódu vyčerpaný!</span>';
+                }
+
+                limitDisplay.innerHTML = `
+                    <span class="block">Limity (Reset: ${formatTime(timeRemaining)}):</span> 
+                    <span class="block">${messagesStatus} | ${luaStatus} ${luaWarning}</span>
+                `;
+            }
+
+            // --- AKTUALIZÁCIA UI PRVKOV ---
+            inputElement.disabled = isBlocked || isGenerating;
+            buttonElement.disabled = isBlocked || isGenerating;
+            inputElement.placeholder = isBlocked ? 
+                'Limit vyčerpaný. Počkajte na reset.' : 
+                (luaLimitReached ? 'Môžete chatovať, ale už nemôžete generovať 3D/Lua kódy.' : 'Napíš svoju otázku...');
+        }
         
-        if (!checkAndApplyRateLimit(true)) { // Aplikujeme timestamp
-            return; 
+        /**
+         * Formátuje milisekundy na minúty a sekundy (M:SS).
+         * @param {number} ms Milisekundy
+         * @returns {string} Formátovaný čas
+         */
+        function formatTime(ms) {
+            const totalSeconds = Math.ceil(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            const paddedSeconds = seconds.toString().padStart(2, '0');
+            return `${minutes}:${paddedSeconds}`;
         }
 
-        displayMessage(userQuery, 'user');
-        input.value = '';
+        /**
+         * Zobrazí úvodnú správu od AI.
+         */
+        function displayWelcomeMessage() {
+            const welcomeText = `Ahoj! Som **ChatSlovak AI V5 Pro**. Dokážem s tebou viesť bežnú komunikáciu, odpovedať na otázky vďaka Google Search/YouTube a generovať pokročilé Roblox Lua kódy pre NPC a mapy. Začnime!`;
+            appendMessage('ai', welcomeText);
+        }
 
-        chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
-        setLoading(true, false); 
+        /**
+         * Zobrazí textovú správu v chatovacom okne.
+         */
+        function appendMessage(role, text, sources = []) {
+            const messagesContainer = document.getElementById('messages-container');
+            const messageElement = document.createElement('div');
+            messageElement.className = `flex mb-4 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
 
-        const payload = {
-            contents: chatHistory,
-            tools: [{ "google_search": {} }],
-            systemInstruction: systemInstructionChat,
-            generationConfig: {
-                temperature: 0.7, 
+            const contentElement = document.createElement('div');
+            // Používame markdown pre formátovanie, takže je potrebné vložiť text ako HTML
+            const markdown = new marked.Renderer();
+            markdown.code = (code, language) => {
+                const langClass = language ? `language-${language}` : '';
+                return `<pre class="bg-gray-800 text-white p-3 rounded-lg overflow-x-auto my-2 text-sm"><code>${code}</code></pre>`;
+            };
+
+            contentElement.innerHTML = marked.parse(text, { renderer: markdown, breaks: true });
+            contentElement.className = `${role === 'user' ? 'user-message' : 'ai-message'} max-w-3xl`;
+
+            // Pridanie citácií (zdrojov)
+            if (sources.length > 0) {
+                const sourcesHtml = sources.map((source, index) => {
+                    return `<a href="${source.uri}" target="_blank" class="text-xs text-blue-600 hover:underline block mt-1">${index + 1}. ${source.title}</a>`;
+                }).join('');
+
+                const sourcesElement = document.createElement('div');
+                sourcesElement.className = 'mt-2 pt-2 border-t border-gray-300 text-gray-700 text-sm';
+                sourcesElement.innerHTML = `<strong>Zdroje (Google Search):</strong> ${sourcesHtml}`;
+                contentElement.appendChild(sourcesElement);
             }
-        };
 
-        const maxRetries = 3;
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+
+            messageElement.appendChild(contentElement);
+            messagesContainer.appendChild(messageElement);
+
+            // Scroll na spodok
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /**
+         * Zobrazí indikátor načítania.
+         */
+        function showLoading() {
+            const messagesContainer = document.getElementById('messages-container');
+            const loadingElement = document.createElement('div');
+            loadingElement.id = 'loading-indicator';
+            loadingElement.className = 'flex justify-start mb-4';
+            loadingElement.innerHTML = `
+                <div class="ai-message flex items-center space-x-2">
+                    <div class="loader"></div>
+                    <span>AI generuje odpoveď...</span>
+                </div>
+            `;
+            messagesContainer.appendChild(loadingElement);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        /**
+         * Odstráni indikátor načítania.
+         */
+        function hideLoading() {
+            const loadingElement = document.getElementById('loading-indicator');
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+        }
+
+        /**
+         * Funkcia na kontrolu, či požiadavka vyžaduje generovanie Lua kódu.
+         * @param {string} query Používateľský dopyt
+         * @returns {boolean} True, ak je to požiadavka na Lua kód.
+         */
+        function isLuaRequest(query) {
+            const lowerQuery = query.toLowerCase();
+            return LUA_KEYWORDS.some(keyword => lowerQuery.includes(keyword));
+        }
+
+
+        /**
+         * Odoslanie správy do AI.
+         */
+        async function sendMessage() {
+            if (isGenerating) return;
+
+            // 1. Kontrola limitov PRED odoslaním
+            initializeLimits(); // Aktualizujeme limity
+            
+            const totalLimitReached = currentLimits.messageCount >= MAX_MESSAGES;
+            if (totalLimitReached) {
+                // UI sa už zablokovalo cez checkAndUpdateUI, len sa vrátime
+                return;
+            }
+
+            const input = document.getElementById('user-input');
+            const userQuery = input.value.trim();
+
+            if (userQuery === '') return;
+
+            const isLuaReq = isLuaRequest(userQuery);
+            const luaLimitReached = currentLimits.luaRequestCount >= MAX_LUA_REQUESTS;
+
+            if (isLuaReq && luaLimitReached) {
+                appendMessage('ai', "Prepáč, limit pre generovanie 3D modelov/Roblox Lua kódov bol pre túto hodinu vyčerpaný. Môžeš mi položiť bežnú otázku (bez generovania kódu).");
+                input.value = '';
+                return;
+            }
+
+            // 2. Zobrazíme správu používateľa
+            appendMessage('user', userQuery);
+            input.value = '';
+
+            // Pridáme dotaz do histórie chatu
+            chatHistory.push({ role: "user", parts: [{ text: userQuery }] });
+
+            // 3. Zobrazíme loading indikátor
+            isGenerating = true;
+            checkAndUpdateUI(); // Zablokuje input počas generovania
+            showLoading();
+
             try {
-                const response = await fetch(textApiUrl, { 
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                // 4. Pripravíme payload
+                const payload = {
+                    contents: chatHistory,
+                    // Pridáme nástroj pre vyhľadávanie na Google (vrátane dát z YouTube)
+                    tools: [{ "google_search": {} }],
+                    // Systemové inštrukcie pre pokročilé schopnosti
+                    systemInstruction: {
+                        parts: [{ text: SYSTEM_PROMPT_SK }]
+                    },
+                };
 
-                if (!response.ok) {
-                    let errorMessage = `HTTP chyba so statusom: ${response.status}.`;
+                // 5. Implementácia Fetch s Exponenciálnym Backoffom
+                let response;
+                const maxRetries = 3;
+                let delay = 1000;
+
+                for (let i = 0; i < maxRetries; i++) {
                     try {
-                        const errorBody = await response.json();
-                        if (errorBody && errorBody.error && errorBody.error.message) {
-                            errorMessage = `Chyba API: ${errorBody.error.message}`;
-                        }
-                    } catch (e) {
-                        errorMessage = `HTTP chyba so statusom ${response.status}.`;
-                    }
+                        response = await fetch(API_URL, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
 
-                    if (attempt < maxRetries) {
-                        console.warn(`Pokus ${attempt} zlyhal, opakujem za chvíľu: ${errorMessage}`);
-                        await delay(attempt);
-                        continue;
+                        if (response.ok) {
+                            break; // Úspešné volanie, vyskočíme zo slučky
+                        } else if (response.status === 429 && i < maxRetries - 1) {
+                            // Príliš veľa požiadaviek, počkáme a skúsime znova
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            delay *= 2; // Exponenciálny backoff
+                        } else {
+                            // Iné chyby alebo vyčerpané pokusy
+                            throw new Error(`API chyba: ${response.status} ${response.statusText}`);
+                        }
+                    } catch (error) {
+                        if (i === maxRetries - 1) throw error; // Re-throw po poslednom pokuse
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
                     }
-                    throw new Error(errorMessage);
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error("Nepodarilo sa získať odpoveď od AI po viacerých pokusoch.");
                 }
 
                 const result = await response.json();
                 const candidate = result.candidates?.[0];
+                let text = "Nastala chyba pri spracovaní odpovede od AI. Skúste to prosím znova.";
+                let sources = [];
+                let success = false;
 
                 if (candidate && candidate.content?.parts?.[0]?.text) {
-                    const aiText = candidate.content.parts[0].text;
+                    text = candidate.content.parts[0].text;
+                    success = true;
                     
-                    let sources = [];
+                    // Získanie zdrojov
                     const groundingMetadata = candidate.groundingMetadata;
                     if (groundingMetadata && groundingMetadata.groundingAttributions) {
                         sources = groundingMetadata.groundingAttributions
@@ -879,51 +437,73 @@ ${aiCode}
                             }))
                             .filter(source => source.uri && source.title);
                     }
-
-                    chatHistory.push({ role: "model", parts: [{ text: aiText }] });
-                    displayMessage(aiText, 'ai', sources);
-                    speakText(aiText); // Volanie TTS
-                    
-                    break; 
-
-                } else {
-                    displayMessage("AI neposkytla žiadnu odpoveď. (Prázdna odpoveď od modelu)", 'ai');
                 }
-            } catch (error) {
-                console.error("Chyba počas volania API:", error);
+
+                // 6. Zobrazíme odpoveď AI
+                appendMessage('ai', text, sources);
+
+                // 7. Aktualizujeme históriu chatu s odpoveďou AI (aj v prípade chyby, aby nebola prerušená konverzácia)
+                chatHistory.push({ role: "model", parts: [{ text: text }] });
                 
-                if (attempt === maxRetries) {
-                    displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
+                // 8. Zvýšime počítadlá len v prípade, že odpoveď bola úspešná (success = true)
+                if (success) {
+                    currentLimits.messageCount++;
+                    if (isLuaReq) {
+                        currentLimits.luaRequestCount++;
+                    }
+                    saveLimits();
                 }
+
+
+            } catch (error) {
+                console.error("Chyba volania Gemini API:", error);
+                appendMessage('ai', `Prepáč, nastala kritická chyba pri komunikácii s AI: ${error.message}`);
+            } finally {
+                // 9. Odstránime loading indikátor a aktualizujeme UI
+                isGenerating = false;
+                hideLoading();
+                checkAndUpdateUI();
             }
         }
-        setLoading(false);
-        checkAndApplyRateLimit(false); // Aktualizovať limit displej po ukončení
-    }
+    </script>
+    <!-- Načítanie Marked.js pre spracovanie Markdownu vo výstupoch AI, čo je dôležité pre formátovanie a Lua kód -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
 
-    // --- Event Listeners ---
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const query = input.value.trim();
-        if (query) {
-            sendChatQuery(query);
-        }
-    });
+    <!-- Hlavný kontajner s glassmorphism efektom -->
+    <div class="glass-container w-full max-w-4xl h-[90vh] flex flex-col p-6 rounded-3xl">
 
-    send3DModelButton.addEventListener('click', function() {
-        const query = input.value.trim();
-        if (query) {
-            generate3DModelCode(query);
-        }
-    });
+        <!-- Hlavička -->
+        <header class="mb-4 pb-2 border-b border-white/50">
+            <h1 class="text-3xl font-extrabold text-white text-shadow-md">ChatSlovak AI: Pro Model</h1>
+            <p class="text-white/80 text-sm">Prístup k Google Search a generovanie Roblox Lua kódu s hodinovými limitmi.</p>
+        </header>
 
-    // --- Initialization ---
-    window.onload = function() {
-        init3D();
-        animate3D();
-        checkAndApplyRateLimit(false); // Inicializovať status limitu pri štarte
-    };
-</script>
+        <!-- Kontajner pre správy (Scrollable) -->
+        <main id="messages-container" class="flex-grow overflow-y-auto pr-2 mb-4 space-y-4">
+            <!-- Správy budú pridané sem cez JavaScript -->
+        </main>
+
+        <!-- Vstupná oblasť -->
+        <div class="flex flex-col space-y-2">
+            
+            <!-- Zobrazenie Limitov a času resetu -->
+            <div id="limit-display" class="w-full">
+                <!-- Tu sa zobrazia aktuálne limity -->
+            </div>
+
+            <!-- Vstup a tlačidlo -->
+            <div class="flex space-x-3">
+                <input type="text" id="user-input" class="glass-input flex-grow p-3 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none placeholder-gray-700 text-gray-900" placeholder="Napíš svoju otázku (napr. 'Vygeneruj Lua kód pre NPC obchodníka v Roblox')">
+                <button id="send-button" class="glass-button px-6 py-3 rounded-xl font-semibold text-gray-800 bg-white/50 hover:bg-white/70 flex items-center justify-center" aria-label="Odoslať správu">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 19-3-9-9-3Z"/><path d="M22 2 11 13"/></svg>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
 </body>
 </html>
 
