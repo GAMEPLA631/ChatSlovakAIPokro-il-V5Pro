@@ -433,18 +433,15 @@
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
     
-    // Konfigurácia pre text a 3D modely (Gemini 2.5 Pro)
+    // Konfigurácia pre text a 3D modely
     const textModelName = 'gemini-2.5-pro'; 
     const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
 
-    // Konfigurácia pre TTS
-    const ttsModelName = 'gemini-2.5-flash-preview-tts'; 
-    const ttsApiUrl = `${apiUrlBase}${ttsModelName}:generateContent?key=${apiKey}`;
-
     // Všeobecná systémová inštrukcia pre chat
+    // UPRAVENÉ: Zákaz použitia symbolu # a striktné obmedzenie formátovania len na tučný text a zoznamy
     const systemInstructionChat = {
         parts: [{ 
-            text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické a MUSIA BYŤ VŽDY logicky a vizuálne štruktúrované. Používaj Markdown pre: **1. Odrážky/Zoznamy pre prehľadné body.** **2. Tučný text (**slovo**) pre kľúčové pojmy a oddeľovanie sekcií.** DÔLEŽITÉ: NIKDY nepoužívaj symbol `#` (nadpisy). 3. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy. Odpovedaj výhradne v slovenčine a buď užitočný."
+            text: "Si špičkový analytik a konzultant. Tvoja úloha je spracovávať zložité otázky. Tvoje odpovede musia byť hĺbkové, syntetické a VŽDY logicky štruktúrované. **Vždy používaj iba jednoduchý Markdown:** **1. Používaj len tučný text (**slovo**) pre kľúčové pojmy.** **2. Používaj len zoznamy (odrážky alebo číslovanie) pre prehľadné body.** **DÔLEŽITÉ:** Zásadne NIKDY nepoužívaj symbol `#` (nadpisy), ani **žiadne iné špeciálne znaky pre zvýraznenie formátovania (ako napr. *** alebo HTML)**, okrem tučného textu a zoznamov. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií. Odpovedaj výhradne v slovenčine a buď užitočný."
         }]
     };
     
@@ -470,146 +467,58 @@
     const loadingIndicator = document.getElementById('loading-indicator');
 
 
-    // --- Audio Utility Functions (for API TTS) ---
+    // --- Native Text-to-Speech (TTS) Functionality (Web Speech API) ---
+    // Nastavenie hlasu pre natívny TTS
+    let selectedVoice = null;
+    
+    function setVoice() {
+        if (typeof window.speechSynthesis === 'undefined') return;
 
-    /**
-     * Konvertuje base64 reťazec do ArrayBuffer.
-     */
-    function base64ToArrayBuffer(base64) {
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-    }
-
-    /**
-     * Pomocná funkcia pre zápis reťazca do DataView.
-     */
-    function writeString(view, offset, string) {
-        for (let i = 0; i < string.length; i++) {
-            view.setUint8(offset + i, string.charCodeAt(i));
-        }
-    }
-
-    /**
-     * Konvertuje raw PCM audio dáta (Int16Array) na WAV Blob.
-     * API vracia 16-bit signed PCM audio dáta.
-     */
-    function pcmToWav(pcm16Data, sampleRate) {
-        const numChannels = 1;
-        const bitsPerSample = 16;
-        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
-        const blockAlign = numChannels * (bitsPerSample / 8);
-        const dataLength = pcm16Data.length * (bitsPerSample / 8);
-        const buffer = new ArrayBuffer(44 + dataLength);
-        const view = new DataView(buffer);
-        let offset = 0;
-
-        /* RIFF identifier */
-        writeString(view, offset, 'RIFF'); offset += 4;
-        /* file length */
-        view.setUint32(offset, 36 + dataLength, true); offset += 4;
-        /* RIFF type */
-        writeString(view, offset, 'WAVE'); offset += 4;
-        /* format chunk identifier */
-        writeString(view, offset, 'fmt '); offset += 4;
-        /* format chunk length */
-        view.setUint32(offset, 16, true); offset += 4;
-        /* sample format (1 for PCM) */
-        view.setUint16(offset, 1, true); offset += 2;
-        /* number of channels */
-        view.setUint16(offset, numChannels, true); offset += 2;
-        /* sample rate */
-        view.setUint32(offset, sampleRate, true); offset += 4;
-        /* byte rate */
-        view.setUint32(offset, byteRate, true); offset += 4;
-        /* block align */
-        view.setUint16(offset, blockAlign, true); offset += 2;
-        /* bits per sample */
-        view.setUint16(offset, bitsPerSample, true); offset += 2;
-        /* data chunk identifier */
-        writeString(view, offset, 'data'); offset += 4;
-        /* data chunk length */
-        view.setUint32(offset, dataLength, true); offset += 4;
-
-        // Write PCM data
-        for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
-            view.setInt16(offset, pcm16Data[i], true);
-        }
-
-        return new Blob([view], { type: 'audio/wav' });
-    }
-
-    // --- Text-to-Speech (TTS) Functionality (API-Based) ---
-    async function speakText(text) {
-        if (!text) return;
+        const voices = window.speechSynthesis.getVoices();
         
-        // Odstránenie markdown syntaxe, aby to znelo prirodzenejšie
-        const cleanText = text.replace(/\*\*/g, '').replace(/###\s*/g, '').replace(/```lua[\s\S]*?```/g, '').trim();
+        // 1. Skúsi nájsť slovenský hlas
+        selectedVoice = voices.find(voice => 
+            voice.lang.startsWith('sk')
+        );
+
+        // 2. Ak nenašiel, skúsi nájsť nejaký kvalitný Google hlas
+        if (!selectedVoice) {
+             selectedVoice = voices.find(voice => voice.name.startsWith('Google') && voice.lang.startsWith('en'));
+        }
+
+        // 3. Posledná možnosť: akýkoľvek hlas
+        if (!selectedVoice && voices.length > 0) {
+            selectedVoice = voices[0];
+        }
+
+        console.log("TTS Hlas vybraný:", selectedVoice ? selectedVoice.name : "Žiadny hlas nebol nájdený.");
+    }
+    
+    // Voices may not load immediately, so attach the listener
+    if (typeof window.speechSynthesis !== 'undefined') {
+        setVoice(); // Skúsi to hneď
+        window.speechSynthesis.onvoiceschanged = setVoice; // Zaručí načítanie po evente
+    }
+
+    // Funkcia prevodu textu na reč
+    async function speakText(text) {
+        // Natívny TTS nemá problém so zasekávaním v porovnaní s API, ale stále ho treba povoliť užívateľskou interakciou.
+        if (typeof window.speechSynthesis === 'undefined' || !selectedVoice || !text) return;
+
+        // Zruší predchádzajúce čítanie, ak prebieha
+        window.speechSynthesis.cancel();
+        
+        // Odstránenie markdown syntaxe (hlavičky, tučný text, kódové bloky) pre čistejšie čítanie
+        const cleanText = text.replace(/\*\*/g, '').replace(/```lua[\s\S]*?```/g, '').replace(/###\s*/g, '').trim();
 
         if (cleanText.length === 0) return;
 
-        // Príprava API payload pre TTS
-        const payload = {
-            contents: [{ parts: [{ text: cleanText }] }],
-            generationConfig: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                    // Konfigurácia pre slovenský hlas (Kore - Firm, Informative)
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: "Kore" } 
-                    },
-                    languageCode: "sk-SK" 
-                }
-            },
-            model: ttsModelName 
-        };
-
-        try {
-            const response = await fetch(ttsApiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                 console.error(`TTS API HTTP error: ${response.status}`);
-                 return;
-            }
-
-            const result = await response.json();
-            const part = result?.candidates?.[0]?.content?.parts?.[0];
-            const audioData = part?.inlineData?.data;
-            const mimeType = part?.inlineData?.mimeType; // Očakávame audio/L16; rate=16000
-
-            if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                const match = mimeType.match(/rate=(\d+)/);
-                const sampleRate = match ? parseInt(match[1], 10) : 16000; // Default 16000 Hz
-                
-                // Konverzia Base64 do Int16Array (raw PCM data)
-                const pcmBuffer = base64ToArrayBuffer(audioData);
-                const pcm16 = new Int16Array(pcmBuffer);
-
-                // Konverzia PCM do WAV Blob a vytvorenie URL
-                const wavBlob = pcmToWav(pcm16, sampleRate);
-                const audioUrl = URL.createObjectURL(wavBlob);
-
-                // Prehrávanie zvuku
-                const audio = new Audio(audioUrl);
-                audio.play().catch(e => {
-                    // Prehliadače často blokujú autoplay, čo sa dá obísť len používateľskou interakciou.
-                    console.warn("Prehrávanie zvuku zlyhalo (možno kvôli obmedzeniam prehliadača):", e);
-                });
-            } else {
-                 console.error("TTS: Neplatná štruktúra odpovede alebo chýbajúce dáta.");
-            }
-
-        } catch (e) {
-            console.error("Chyba počas TTS volania:", e);
-        }
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.voice = selectedVoice;
+        utterance.rate = 1.0; // Rýchlosť
+        utterance.pitch = 1.0; // Výška
+        
+        window.speechSynthesis.speak(utterance);
     }
 
 
@@ -739,7 +648,7 @@
         loadingIndicator.classList.toggle('hidden', !isLoading);
         
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam a generujem reč...') 
+            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam...') 
             : '';
     }
 
@@ -935,6 +844,7 @@ ${aiCode}
 </script>
 </body>
 </html>
+
 
 
 
