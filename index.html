@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatSlovak AI Pokročilý V5 PRO (s Roblox Lua 3D)</title>
+    <title>ChatSlovak AI Pokročilý V5 PRO (s Roblox Lua 3D a TTS)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
@@ -99,7 +99,7 @@
             line-height: 1.4;
         }
         
-        /* Pôvodný štýl pre kódové bloky v správach - ponechávame pre bežný textový chat */
+        /* Pôvodný štýl pre kódové bloky v správach */
         .ai-message pre {
             background-color: #1f2937;
             color: #d1d5db;
@@ -177,7 +177,7 @@
 <div id="chat-container">
     <!-- Chat Header -->
     <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
-        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D)</h1>
+        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D & TTS)</h1>
         <p class="text-sm text-gray-400">**Nová funkcia:** Zadajte popis pre generovanie komplexného Lua kódu 3D modelu (Roblox Command Bar).</p>
         <!-- INDIKÁTOR STAVU LIMITU -->
         <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
@@ -189,7 +189,7 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**.</p>
+            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua** a **Slovenskú syntézu reči**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**, alebo pošlite bežnú otázku. Odpoveď bude aj prečítaná.</p>
         </div>
     </div>
 
@@ -319,8 +319,8 @@
     window.rateLimitTimeout = null; 
 
     /** * Aktualizuje UI element s informáciou o zostávajúcom limite a vracia objekt so stavom.
-      * @returns {object} { remaining: number, timeUntilReset: number }
-      */
+     * @returns {object} { remaining: number, timeUntilReset: number }
+     */
     function updateLimitStatusDisplay(currentTimestamps) {
         const now = Date.now();
         // Odfiltruje len tie timestampy, ktoré sú ešte v rámci hodinového okna.
@@ -360,11 +360,11 @@
     }
 
     /**
-      * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
-      * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
-      * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
-      * @returns {boolean} True, ak je povolené odoslať správu.
-      */
+     * Kontroluje a aplikuje limit počtu správ pomocou localStorage.
+     * Taktiež nastavuje automatický časovač resetu, ak je limit prekročený.
+     * @param {boolean} apply - Ak je true, aplikuje sa nový timestamp (odosiela sa správa).
+     * @returns {boolean} True, ak je povolené odoslať správu.
+     */
     function checkAndApplyRateLimit(apply = false) { 
         const now = Date.now();
         let timestamps = [];
@@ -428,53 +428,7 @@
         }
     }
 
-    // --- Text-to-Speech (TTS) Functionality ---
-    const synth = window.speechSynthesis;
-    let voices = [];
-
-    function populateVoiceList() {
-        voices = synth.getVoices();
-    }
-
-    if (synth.onvoiceschanged !== undefined) {
-        synth.onvoiceschanged = populateVoiceList;
-    } else {
-        populateVoiceList(); 
-    }
-    
-    function speakText(text) {
-        if (!synth || !text) return;
-        
-        if (synth.speaking) {
-            synth.cancel();
-        }
-
-        const cleanText = text.replace(/\*\*/g, '').replace(/###\s*/g, ''); 
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-
-        let selectedVoice = voices.find(voice => voice.lang.startsWith('sk-SK'));
-        if (!selectedVoice) {
-            selectedVoice = voices.find(voice => voice.name.includes('Google') && voice.lang.startsWith('en'));
-        }
-        if (!selectedVoice) {
-            selectedVoice = voices[0];
-        }
-
-        if (selectedVoice) {
-            utterance.voice = selectedVoice;
-            utterance.lang = selectedVoice.lang;
-        } else {
-            utterance.lang = 'sk-SK'; 
-        }
-
-        utterance.rate = 1.0; 
-        utterance.pitch = 1.0; 
-
-        synth.speak(utterance);
-    }
-
-
-    // --- API Configuration and Global Variables ---
+    // --- Core API Configuration ---
 
     const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; 
     const apiUrlBase = "https://generativelanguage.googleapis.com/v1beta/models/";
@@ -483,10 +437,13 @@
     const textModelName = 'gemini-2.5-pro'; 
     const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
 
+    // Konfigurácia pre TTS
+    const ttsModelName = 'gemini-2.5-flash-preview-tts'; 
+    const ttsApiUrl = `${apiUrlBase}${ttsModelName}:generateContent?key=${apiKey}`;
+
     // Všeobecná systémová inštrukcia pre chat
     const systemInstructionChat = {
         parts: [{ 
-            // UPDATOVANÁ INŠTRUKCIA: Odstránenie požiadavky na nadpisy (##) a zvýraznenie tučného textu a zoznamov ako primárneho nástroja pre štruktúru.
             text: "Si špičkový analytik, stratég a vedecký konzultant. Tvojou úlohou je spracovávať mimoriadne zložité, multi-disciplinárne otázky. Tvoje odpovede musia byť hĺbkové, syntetické a MUSIA BYŤ VŽDY logicky a vizuálne štruktúrované. Používaj Markdown pre: **1. Odrážky/Zoznamy pre prehľadné body.** **2. Tučný text (**slovo**) pre kľúčové pojmy a oddeľovanie sekcií.** DÔLEŽITÉ: NIKDY nepoužívaj symbol `#` (nadpisy). 3. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií pre komplexné témy. Odpovedaj výhradne v slovenčine a buď užitočný."
         }]
     };
@@ -504,7 +461,6 @@
         }]
     };
 
-
     let chatHistory = [];
     const messagesDiv = document.getElementById('messages');
     const form = document.getElementById('chat-form');
@@ -512,6 +468,149 @@
     const sendChatButton = document.getElementById('send-chat-button');
     const send3DModelButton = document.getElementById('send-3d-model-button'); 
     const loadingIndicator = document.getElementById('loading-indicator');
+
+
+    // --- Audio Utility Functions (for API TTS) ---
+
+    /**
+     * Konvertuje base64 reťazec do ArrayBuffer.
+     */
+    function base64ToArrayBuffer(base64) {
+        const binaryString = atob(base64);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+    }
+
+    /**
+     * Pomocná funkcia pre zápis reťazca do DataView.
+     */
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    /**
+     * Konvertuje raw PCM audio dáta (Int16Array) na WAV Blob.
+     * API vracia 16-bit signed PCM audio dáta.
+     */
+    function pcmToWav(pcm16Data, sampleRate) {
+        const numChannels = 1;
+        const bitsPerSample = 16;
+        const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+        const blockAlign = numChannels * (bitsPerSample / 8);
+        const dataLength = pcm16Data.length * (bitsPerSample / 8);
+        const buffer = new ArrayBuffer(44 + dataLength);
+        const view = new DataView(buffer);
+        let offset = 0;
+
+        /* RIFF identifier */
+        writeString(view, offset, 'RIFF'); offset += 4;
+        /* file length */
+        view.setUint32(offset, 36 + dataLength, true); offset += 4;
+        /* RIFF type */
+        writeString(view, offset, 'WAVE'); offset += 4;
+        /* format chunk identifier */
+        writeString(view, offset, 'fmt '); offset += 4;
+        /* format chunk length */
+        view.setUint32(offset, 16, true); offset += 4;
+        /* sample format (1 for PCM) */
+        view.setUint16(offset, 1, true); offset += 2;
+        /* number of channels */
+        view.setUint16(offset, numChannels, true); offset += 2;
+        /* sample rate */
+        view.setUint32(offset, sampleRate, true); offset += 4;
+        /* byte rate */
+        view.setUint32(offset, byteRate, true); offset += 4;
+        /* block align */
+        view.setUint16(offset, blockAlign, true); offset += 2;
+        /* bits per sample */
+        view.setUint16(offset, bitsPerSample, true); offset += 2;
+        /* data chunk identifier */
+        writeString(view, offset, 'data'); offset += 4;
+        /* data chunk length */
+        view.setUint32(offset, dataLength, true); offset += 4;
+
+        // Write PCM data
+        for (let i = 0; i < pcm16Data.length; i++, offset += 2) {
+            view.setInt16(offset, pcm16Data[i], true);
+        }
+
+        return new Blob([view], { type: 'audio/wav' });
+    }
+
+    // --- Text-to-Speech (TTS) Functionality (API-Based) ---
+    async function speakText(text) {
+        if (!text) return;
+        
+        // Odstránenie markdown syntaxe, aby to znelo prirodzenejšie
+        const cleanText = text.replace(/\*\*/g, '').replace(/###\s*/g, '').replace(/```lua[\s\S]*?```/g, '').trim();
+
+        if (cleanText.length === 0) return;
+
+        // Príprava API payload pre TTS
+        const payload = {
+            contents: [{ parts: [{ text: cleanText }] }],
+            generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    // Konfigurácia pre slovenský hlas (Kore - Firm, Informative)
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: "Kore" } 
+                    },
+                    languageCode: "sk-SK" 
+                }
+            },
+            model: ttsModelName 
+        };
+
+        try {
+            const response = await fetch(ttsApiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                 console.error(`TTS API HTTP error: ${response.status}`);
+                 return;
+            }
+
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType; // Očakávame audio/L16; rate=16000
+
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const match = mimeType.match(/rate=(\d+)/);
+                const sampleRate = match ? parseInt(match[1], 10) : 16000; // Default 16000 Hz
+                
+                // Konverzia Base64 do Int16Array (raw PCM data)
+                const pcmBuffer = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmBuffer);
+
+                // Konverzia PCM do WAV Blob a vytvorenie URL
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+                const audioUrl = URL.createObjectURL(wavBlob);
+
+                // Prehrávanie zvuku
+                const audio = new Audio(audioUrl);
+                audio.play().catch(e => {
+                    // Prehliadače často blokujú autoplay, čo sa dá obísť len používateľskou interakciou.
+                    console.warn("Prehrávanie zvuku zlyhalo (možno kvôli obmedzeniam prehliadača):", e);
+                });
+            } else {
+                 console.error("TTS: Neplatná štruktúra odpovede alebo chýbajúce dáta.");
+            }
+
+        } catch (e) {
+            console.error("Chyba počas TTS volania:", e);
+        }
+    }
 
 
     // --- Utility Functions ---
@@ -524,8 +623,8 @@
     }
 
     /**
-      * Skopíruje text do schránky a zmení text tlačidla.
-      */
+     * Skopíruje text do schránky a zmení text tlačidla.
+     */
     function copyToClipboard(button, textToCopy) {
         // Použitie document.execCommand('copy') pre kompatibilitu v iFrame
         const textarea = document.createElement('textarea');
@@ -585,7 +684,7 @@
             }
             
             // Opatrné escapovanie spätných lomiek a dolárov pre použitie v `onclick` atribúte
-            const escapedCode = pureLuaCode.replace(/`/g, '\\`').replace(/$/g, '&#36;');
+            const escapedCode = pureLuaCode.replace(/`/g, '\\`').replace(/\$/g, '&#36;');
 
             // 3. Vytvorenie HTML pre vlastný Lua obal
             const luaWrapperHtml = `
@@ -640,7 +739,7 @@
         loadingIndicator.classList.toggle('hidden', !isLoading);
         
         loadingIndicator.querySelector('div').textContent = isLoading 
-            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam...') 
+            ? (isModel ? 'Vytváram 3D model, čakajte...' : 'Rozmýšľam a generujem reč...') 
             : '';
     }
 
@@ -803,51 +902,39 @@ ${aiCode}
                 console.error("Chyba počas volania API:", error);
                 
                 if (attempt === maxRetries) {
-                    const errorMessage = `KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`;
-                    displayMessage(errorMessage, 'ai');
+                    displayMessage(`KRITICKÁ CHYBA po ${maxRetries} pokusoch: ${error.message}`, 'ai');
                 }
             }
         }
         setLoading(false);
-        checkAndApplyRateLimit(false); // Aktualizuje limit displej po ukončení
+        checkAndApplyRateLimit(false); // Aktualizovať limit displej po ukončení
     }
 
-    // --- Event Listeners and Initialization ---
-    
-    // Obsluha odoslania formulára pre štandardný chat
-    form.addEventListener('submit', function(event) {
-        event.preventDefault();
-        const userQuery = input.value.trim();
-        if (userQuery) {
-            sendChatQuery(userQuery);
+    // --- Event Listeners ---
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const query = input.value.trim();
+        if (query) {
+            sendChatQuery(query);
         }
     });
 
-    // Obsluha pre tlačidlo "Generovať 3D Model"
     send3DModelButton.addEventListener('click', function() {
-        const userPrompt = input.value.trim();
-        if (userPrompt) {
-            generate3DModelCode(userPrompt);
-        } else {
-            displayMessage("Prosím, zadajte popis 3D modelu (napr. Zlatá špirálová veža) do textového poľa.", 'ai');
+        const query = input.value.trim();
+        if (query) {
+            generate3DModelCode(query);
         }
     });
 
-    // Spustenie 3D pozadia a kontrola limitov pri načítaní
+    // --- Initialization ---
     window.onload = function() {
         init3D();
         animate3D();
-        checkAndApplyRateLimit(false); // Inicializačná kontrola limitu
-        
-        // Nastavíme interval pre pravidelnú aktualizáciu limitu (každých 5 sekúnd)
-        setInterval(() => {
-            checkAndApplyRateLimit(false);
-        }, 5000); 
-    }
+        checkAndApplyRateLimit(false); // Inicializovať status limitu pri štarte
+    };
 </script>
 </body>
 </html>
-
 
 
 
