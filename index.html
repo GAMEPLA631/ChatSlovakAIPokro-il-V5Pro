@@ -189,7 +189,7 @@
     <div id="messages">
         <!-- Úvodná správa s upraveným formátovaním -->
         <div class="message-bubble ai-message">
-            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua** a **Slovenskú syntézu reči**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**, alebo pošlite bežnú otázku. Odpoveď bude aj prečítaná.</p>
+            <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua** a **Slovenskú syntézu reči**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**, alebo pošlite bežnú otázku. Odpoveď bude aj prečítaná. **Poznámka:** Prehliadač môže vyžadovať prvé kliknutie na stránku, aby povolil spustenie hlasu.</p>
         </div>
     </div>
 
@@ -503,15 +503,21 @@
     // Funkcia prevodu textu na reč
     async function speakText(text) {
         // Natívny TTS nemá problém so zasekávaním v porovnaní s API, ale stále ho treba povoliť užívateľskou interakciou.
-        if (typeof window.speechSynthesis === 'undefined' || !selectedVoice || !text) return;
+        if (typeof window.speechSynthesis === 'undefined' || !selectedVoice || !text) {
+             console.warn("TTS: Prehliadač nepodporuje alebo nebol nájdený hlas.");
+             return;
+        }
 
         // Zruší predchádzajúce čítanie, ak prebieha
         window.speechSynthesis.cancel();
         
         // Odstránenie markdown syntaxe (hlavičky, tučný text, kódové bloky) pre čistejšie čítanie
-        const cleanText = text.replace(/\*\*/g, '').replace(/```lua[\s\S]*?```/g, '').replace(/###\s*/g, '').trim();
+        const cleanText = text.replace(/\*\*/g, '').replace(/```lua[\s\S]*?```/g, '').replace(/#\s*/g, '').trim();
 
         if (cleanText.length === 0) return;
+        
+        console.log(`TTS: Pripravujem sa na čítanie textu: "${cleanText.substring(0, 50)}..."`);
+
 
         const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.voice = selectedVoice;
