@@ -79,6 +79,33 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #ccc;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.4s;
+        }
+        .toggle-switch:after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.4s;
+        }
+        .toggle-switch.active {
+            background: #34D399; /* Emerald 400 */
+        }
+        .toggle-switch.active:after {
+            left: calc(100% - 22px);
+        }
     </style>
     <script>
         // Konštanta pre API Key. Vlož svoj kľúč tu.
@@ -95,6 +122,12 @@
         const LS_KEY = 'aiChatLimitsV5Pro';
         const LUA_KEYWORDS = ['lua', 'roblox', 'npc', 'mapa', 'kód', 'vygeneruj'];
         // -----------------------------
+
+        // --- TTS Konfigurácia ---
+        let ttsEnabled = false;
+        const ttsStorageKey = 'ttsEnabledProChat';
+        let slovakVoice = null;
+        const synth = window.speechSynthesis;
 
         // Robustné systémové inštrukcie pre pokročilé schopnosti AI
         const SYSTEM_PROMPT_SK = `
@@ -117,21 +150,94 @@
         };
 
         /**
+         * Načíta hlasy a pokúsi sa nájsť slovenský hlas.
+         */
+        function loadVoices() {
+            const voices = synth.getVoices();
+            slovakVoice = voices.find(voice => voice.lang === 'sk-SK') || 
+                          voices.find(voice => voice.lang.startsWith('sk')) || 
+                          voices.find(voice => voice.lang === 'cs-CZ') || // Alternatíva ak nie je SK hlas
+                          voices.find(voice => voice.default); // Použije sa defaultný hlas ak SK/CS nie je dostupné
+            
+            // Ak sa hlasy nenačítali hneď, pridáme listener
+            if (voices.length === 0) {
+                synth.onvoiceschanged = () => {
+                    loadVoices(); // Rekurzívne zavolanie po načítaní
+                    synth.onvoiceschanged = null; // Odstránenie listenera
+                };
+            }
+        }
+
+        /**
+         * Prepína stav TTS a ukladá ho do localStorage.
+         */
+        function toggleTts() {
+            ttsEnabled = !ttsEnabled;
+            localStorage.setItem(ttsStorageKey, ttsEnabled.toString());
+            updateTtsToggleUI();
+            
+            if (synth.speaking) {
+                synth.cancel(); // Zastaví hovorenie, ak bolo zapnuté
+            }
+        }
+
+        /**
+         * Aktualizuje vzhľad prepínača TTS.
+         */
+        function updateTtsToggleUI() {
+            const toggle = document.getElementById('tts-toggle');
+            if (toggle) {
+                if (ttsEnabled) {
+                    toggle.classList.add('active');
+                } else {
+                    toggle.classList.remove('active');
+                }
+            }
+        }
+
+        /**
          * Inicializuje aplikáciu po načítaní okna.
          */
         window.onload = () => {
+            // Inicializácia TTS
+            loadVoices();
+            ttsEnabled = localStorage.getItem(ttsStorageKey) === 'true';
+            
             document.getElementById('send-button').addEventListener('click', sendMessage);
             document.getElementById('user-input').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     sendMessage();
                 }
             });
+            document.getElementById('tts-toggle').addEventListener('click', toggleTts);
+
             initializeLimits();
             checkAndUpdateUI();
+            updateTtsToggleUI(); // Nastaví počiatočný stav tlačidla TTS
+            
             // Nastavíme interval, ktorý kontroluje a aktualizuje UI každú sekundu
             setInterval(checkAndUpdateUI, 1000); 
             displayWelcomeMessage();
         };
+        
+        // Funkcia Text-to-Speech
+        function speakMessage(text) {
+            // Ak je TTS vypnuté alebo prehliadač nepodporuje
+            if (!ttsEnabled || !synth || !slovakVoice) return;
+            
+            // Zrušíme akékoľvek prebiehajúce hovorenie
+            synth.cancel();
+
+            // Odstránime Markdown kód bloky (Lua kódy) pred hovorením, aby AI nečítala kód
+            const textToSpeak = text.replace(/```[\s\S]*?```/g, 'Generovaný kód bol vynechaný.').replace(/\*\*/g, '');
+            
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.voice = slovakVoice;
+            utterance.lang = slovakVoice.lang;
+            utterance.rate = 1.0; // Rýchlosť
+            
+            synth.speak(utterance);
+        }
 
         /**
          * Načíta alebo inicializuje limity z localStorage a automaticky resetuje, ak vypršal čas.
@@ -249,13 +355,14 @@
          */
         function displayWelcomeMessage() {
             const welcomeText = `Ahoj! Som **ChatSlovak AI V5 Pro**. Dokážem s tebou viesť bežnú komunikáciu, odpovedať na otázky vďaka Google Search/YouTube a generovať pokročilé Roblox Lua kódy pre NPC a mapy. Začnime!`;
-            appendMessage('ai', welcomeText);
+            appendMessage('ai', welcomeText, [], false); // Nesmie hovoriť úvodnú správu
         }
 
         /**
          * Zobrazí textovú správu v chatovacom okne.
+         * Pridaný parameter `shouldSpeak` pre kontrolu TTS
          */
-        function appendMessage(role, text, sources = []) {
+        function appendMessage(role, text, sources = [], shouldSpeak = true) {
             const messagesContainer = document.getElementById('messages-container');
             const messageElement = document.createElement('div');
             messageElement.className = `flex mb-4 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
@@ -286,6 +393,11 @@
 
             messageElement.appendChild(contentElement);
             messagesContainer.appendChild(messageElement);
+
+            // Spustenie TTS
+            if (role === 'ai' && shouldSpeak) {
+                speakMessage(text);
+            }
 
             // Scroll na spodok
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -349,6 +461,11 @@
             const userQuery = input.value.trim();
 
             if (userQuery === '') return;
+            
+            // Zastavíme prípadné hovorenie
+            if (synth.speaking) {
+                synth.cancel();
+            }
 
             const isLuaReq = isLuaRequest(userQuery);
             const luaLimitReached = currentLimits.luaRequestCount >= MAX_LUA_REQUESTS;
@@ -360,7 +477,7 @@
             }
 
             // 2. Zobrazíme správu používateľa
-            appendMessage('user', userQuery);
+            appendMessage('user', userQuery, [], false); // Používateľské správy nehovoríme
             input.value = '';
 
             // Pridáme dotaz do histórie chatu
@@ -439,8 +556,8 @@
                     }
                 }
 
-                // 6. Zobrazíme odpoveď AI
-                appendMessage('ai', text, sources);
+                // 6. Zobrazíme odpoveď AI a spustíme čítanie
+                appendMessage('ai', text, sources, true);
 
                 // 7. Aktualizujeme históriu chatu s odpoveďou AI (aj v prípade chyby, aby nebola prerušená konverzácia)
                 chatHistory.push({ role: "model", parts: [{ text: text }] });
@@ -475,9 +592,17 @@
     <div class="glass-container w-full max-w-4xl h-[90vh] flex flex-col p-6 rounded-3xl">
 
         <!-- Hlavička -->
-        <header class="mb-4 pb-2 border-b border-white/50">
-            <h1 class="text-3xl font-extrabold text-white text-shadow-md">ChatSlovak AI: Pro Model</h1>
-            <p class="text-white/80 text-sm">Prístup k Google Search a generovanie Roblox Lua kódu s hodinovými limitmi.</p>
+        <header class="mb-4 pb-2 border-b border-white/50 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-extrabold text-white text-shadow-md">ChatSlovak AI: Pro Model</h1>
+                <p class="text-white/80 text-sm">Prístup k Google Search a generovanie Roblox Lua kódu s hodinovými limitmi.</p>
+            </div>
+            
+            <!-- TTS Toggle -->
+            <div class="flex items-center space-x-2 p-2 rounded-xl bg-white/20">
+                <span class="text-white text-sm font-semibold whitespace-nowrap">TTS (Hlas):</span>
+                <div id="tts-toggle" class="toggle-switch"></div>
+            </div>
         </header>
 
         <!-- Kontajner pre správy (Scrollable) -->
@@ -506,7 +631,6 @@
 
 </body>
 </html>
-
 
 
 
