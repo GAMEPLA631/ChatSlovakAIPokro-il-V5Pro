@@ -215,7 +215,7 @@
 
     <!-- Messages Area -->
     <div id="messages">
-        <!-- Úvodná správa s upraveným formátovaním -->
+        <!-- Úvodná správa s upraveným formátovaním. * sa zobrazuje, ale nebude čítaná. -->
         <div class="message-bubble ai-message">
             <p>Vitaj! Model bol aktualizovaný pre **Generovanie 3D modelov v Lua** a **Slovenskú syntézu reči**. Zadajte presný popis modelu (napr. *detailný stíhačka v retro štýle*, alebo *modrá špirálová veža so zlatými prvkami*), a kliknite na **Generovať 3D Model**, alebo pošlite bežnú otázku. Odpoveď bude aj prečítaná. **Poznámka:** Prehliadač môže vyžadovať prvé kliknutie na stránku, aby povolil spustenie hlasu.</p>
         </div>
@@ -466,10 +466,10 @@
     const textApiUrl = `${apiUrlBase}${textModelName}:generateContent?key=${apiKey}`;
 
     // Všeobecná systémová inštrukcia pre chat
-    // UPRAVENÉ: Zákaz použitia symbolu # a striktné obmedzenie formátovania len na tučný text a zoznamy
     const systemInstructionChat = {
         parts: [{ 
-            text: "Si špičkový analytik a konzultant. Tvoja úloha je spracovávať zložité otázky. Tvoje odpovede musia byť hĺbkové, syntetické a VŽDY logicky štruktúrované. **Vždy používaj iba jednoduchý Markdown:** **1. Používaj len tučný text (**slovo**) pre kľúčové pojmy.** **2. Používaj len zoznamy (odrážky alebo číslovanie) pre prehľadné body.** **DÔLEŽITÉ:** Zásadne NIKDY nepoužívaj symbol `#` (nadpisy), ani **žiadne iné špeciálne znaky pre zvýraznenie formátovania (ako napr. *** alebo HTML)**, okrem tučného textu a zoznamov. Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií. Odpovedaj výhradne v slovenčine a buď užitočný."
+            // !!! UPRAVENÉ: Zákaz symbolov * a #, namiesto toho použiť VEĽKÉ PÍSMENÁ a pomlčky pre zoznamy.
+            text: "Si špičkový analytik a konzultant. Tvoja úloha je spracovávať zložité otázky. Tvoje odpovede musia byť hĺbkové, syntetické a VŽDY logicky štruktúrované. **DÔLEŽITÉ FORMÁTOVACIE PRAVIDLÁ:** **1. Na zdôraznenie KĽÚČOVÝCH POJMOV VŽDY POUŽÍVAJ TEXT VEĽKÝMI PÍSMENAMI (napr. DÔLEŽITÉ SLOVO).** **2. Pre zoznamy VŽDY používaj odrážky s pomlčkou (-) alebo číslovanie (1. 2. 3.).** **3. Zásadne NIKDY nepoužívaj symboly `*` (hviezdička) ani `#` (hash, pre nadpisy).** Vždy použi Google Search na overenie a poskytnutie aktuálnych, faktických informácií. Odpovedaj výhradne v slovenčine a buď užitočný."
         }]
     };
     
@@ -572,8 +572,12 @@
         // Zruší predchádzajúce čítanie, ak prebieha
         window.speechSynthesis.cancel();
         
-        // Odstránenie markdown syntaxe (hlavičky, tučný text, kódové bloky) pre čistejšie čítanie
-        const cleanText = text.replace(/\*\*/g, '').replace(/```lua[\s\S]*?```/g, '').replace(/#\s*/g, '').trim();
+        // Odstránenie markdown syntaxe (kódové bloky, #, VŠETKY HVUEZDIČKY) pre čistejšie čítanie
+        const cleanText = text
+            .replace(/```lua[\s\S]*?```/g, '') // Odstráni kódové bloky
+            .replace(/#\s*/g, '')              // Odstráni #
+            .replace(/\*/g, '')                // Odstráni VŠETKY hviezdičky (*)
+            .trim();
 
         if (cleanText.length === 0) return;
         
@@ -661,6 +665,8 @@
             // 2. Formátovanie inštrukcií ako markdown
             let instructionsHtml = '';
             if (typeof marked !== 'undefined') {
+                // Všimnite si: marked.parse teraz spracuje VEĽKÉ PÍSMENÁ na vizuálne zvýraznenie.
+                // Môžeme zvážiť špeciálnu náhradu pre VEĽKÉ PÍSMENÁ na tučný text, ak by to bolo potrebné.
                 instructionsHtml = marked.parse(instructionText);
             } else {
                 instructionsHtml = `<p>${instructionText.replace(/\n/g, '<br>')}</p>`;
@@ -686,6 +692,7 @@
 
         } else if (typeof marked !== 'undefined') {
             // --- Štandardné Markdown pre bežný chat ---
+            // Napriek zákazu * v generovaní, zaručíme, že pomlčky pre zoznamy sa spracujú.
             formattedText = marked.parse(text); 
         } else {
             formattedText = `<p>${text.replace(/\n/g, '<br>')}</p>`; 
@@ -777,6 +784,7 @@
                 const aiCode = result.candidates?.[0]?.content?.parts?.[0]?.text || "Model neposkytol žiadny kód.";
                 
                 // Formátovanie odpovede S INŠTRUKCIAMI a kódovým blokom (ten bude vizuálne spracovaný vo funkcii displayMessage)
+                // PRE 3D MODEL PONECHÁVAME ** kvôli jasnej vizualizácii v chate
                 const responseText = `**Vygenerovaný Roblox Lua Kód:**
 Tento kód je pripravený na skopírovanie a vloženie priamo do **Command Bar** v Roblox Studio.
 
@@ -918,6 +926,8 @@ ${aiCode}
 </script>
 </body>
 </html>
+
+
 
 
 
