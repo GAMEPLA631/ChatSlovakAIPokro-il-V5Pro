@@ -154,7 +154,23 @@
         }
         /* --- KONIEC NOVÝCH ŠTÝLOV --- */
 
-        /* Responsívny layout tlačidiel */
+        /* Responsívny layout tlačidiel a hlasu */
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            padding-top: 0.5rem;
+        }
+        #voice-select {
+            padding: 0.3rem 0.5rem;
+            border-radius: 0.5rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 0.875rem;
+        }
+
         .button-group {
             display: flex;
             gap: 0.75rem;
@@ -166,6 +182,10 @@
             .button-group button {
                 width: 100%;
             }
+            .header-controls {
+                 flex-direction: column;
+                 align-items: stretch;
+            }
         }
     </style>
 </head>
@@ -176,13 +196,21 @@
 
 <div id="chat-container">
     <!-- Chat Header -->
-    <header class="chat-header p-4 text-white text-center rounded-t-xl shadow-lg">
-        <h1 class="text-xl font-bold">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D & TTS)</h1>
-        <p class="text-sm text-gray-400">**Nová funkcia:** Zadajte popis pre generovanie komplexného Lua kódu 3D modelu (Roblox Command Bar).</p>
-        <!-- INDIKÁTOR STAVU LIMITU -->
-        <span id="limit-status" class="text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-indigo-700/50">
-            Načítavam limit...
-        </span>
+    <header class="chat-header p-4 text-white rounded-t-xl shadow-lg">
+        <h1 class="text-xl font-bold text-center">💬 ChatSlovak AI Pokročilý V5 PRO (Roblox Lua 3D & TTS)</h1>
+        
+        <div class="header-controls">
+            <!-- Voice Selector -->
+            <div class="flex flex-col sm:flex-row sm:items-center gap-2">
+                 <label for="voice-select" class="text-sm font-medium text-gray-300">Vybrať Hlas:</label>
+                 <select id="voice-select" class="w-full sm:w-auto"></select>
+            </div>
+
+            <!-- Rate Limit Status -->
+            <span id="limit-status" class="text-xs font-medium py-1 px-3 rounded-full bg-indigo-700/50">
+                Načítavam limit...
+            </span>
+        </div>
     </header>
 
     <!-- Messages Area -->
@@ -346,14 +374,14 @@
             
             // UI Update
             limitStatusElement.textContent = `Limit VYČERPANÝ. Reset za ${minutes}m ${seconds}s`;
-            limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-red-700/70";
+            limitStatusElement.className = "text-xs font-medium py-1 px-3 rounded-full bg-red-700/70";
             
             return { remaining: 0, timeUntilReset: timeUntilResetMs };
 
         } else {
             // Limit OK
             limitStatusElement.textContent = `Zostáva: ${messagesRemaining} z ${MAX_MESSAGES_PER_HOUR} správ/h`;
-            limitStatusElement.className = "text-xs font-medium mt-1 inline-block py-1 px-3 rounded-full bg-green-600/70";
+            limitStatusElement.className = "text-xs font-medium py-1 px-3 rounded-full bg-green-600/70";
             
             return { remaining: messagesRemaining, timeUntilReset: 0 };
         }
@@ -465,46 +493,79 @@
     const sendChatButton = document.getElementById('send-chat-button');
     const send3DModelButton = document.getElementById('send-3d-model-button'); 
     const loadingIndicator = document.getElementById('loading-indicator');
+    const voiceSelect = document.getElementById('voice-select');
 
 
     // --- Native Text-to-Speech (TTS) Functionality (Web Speech API) ---
     // Nastavenie hlasu pre natívny TTS
     let selectedVoice = null;
     
+    /**
+     * Loads available voices, populates the dropdown, and sets the best default voice.
+     */
     function setVoice() {
         if (typeof window.speechSynthesis === 'undefined') return;
 
         const voices = window.speechSynthesis.getVoices();
+        voiceSelect.innerHTML = ''; // Clear previous options
         
-        // 1. Skúsi nájsť slovenský hlas
-        selectedVoice = voices.find(voice => 
-            voice.lang.startsWith('sk')
-        );
+        let defaultVoice = null;
+        let firstSkVoice = null;
 
-        // 2. Ak nenašiel, skúsi nájsť nejaký kvalitný Google hlas
-        if (!selectedVoice) {
-             selectedVoice = voices.find(voice => voice.name.startsWith('Google') && voice.lang.startsWith('en'));
+        voices.forEach(voice => {
+            // Filter and prioritize Slovak, Czech, and well-known high-quality English voices
+            if (voice.lang.startsWith('sk') || voice.lang.startsWith('cs') || 
+                voice.name.includes('Google') || voice.name.includes('Samantha') || 
+                voice.name.includes('Karen') || voice.name.includes('Microsoft')) {
+                
+                const option = document.createElement('option');
+                // Use the name and language code for display
+                option.textContent = `${voice.name} (${voice.lang})`; 
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+                
+                if (voice.lang.startsWith('sk') && !firstSkVoice) {
+                    firstSkVoice = voice; // Prioritize the first Slovak voice found
+                }
+            }
+        });
+
+        // 1. Set default to the first Slovak voice found
+        if (firstSkVoice) {
+            defaultVoice = firstSkVoice;
+        } 
+        // 2. Fallback to a high-quality Google English voice
+        else if (voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'))) {
+            defaultVoice = voices.find(v => v.name.includes('Google') && v.lang.startsWith('en'));
+        } 
+        // 3. Fallback to the first available voice
+        else if (voices.length > 0) {
+            defaultVoice = voices[0];
         }
 
-        // 3. Posledná možnosť: akýkoľvek hlas
-        if (!selectedVoice && voices.length > 0) {
-            selectedVoice = voices[0];
+        selectedVoice = defaultVoice;
+        if (selectedVoice) {
+            voiceSelect.value = selectedVoice.name;
         }
-
-        console.log("TTS Hlas vybraný:", selectedVoice ? selectedVoice.name : "Žiadny hlas nebol nájdený.");
     }
     
-    // Voices may not load immediately, so attach the listener
+    // Voices may not load immediately, so attach the listener and run immediately
     if (typeof window.speechSynthesis !== 'undefined') {
-        setVoice(); // Skúsi to hneď
-        window.speechSynthesis.onvoiceschanged = setVoice; // Zaručí načítanie po evente
+        setVoice(); 
+        window.speechSynthesis.onvoiceschanged = setVoice; // Re-run when voices are loaded
+        
+        voiceSelect.addEventListener('change', function() {
+            const selectedName = voiceSelect.value;
+            const voices = window.speechSynthesis.getVoices();
+            selectedVoice = voices.find(voice => voice.name === selectedName);
+            console.log("TTS Hlas zmenený na:", selectedVoice ? selectedVoice.name : "Neznámy.");
+        });
     }
 
     // Funkcia prevodu textu na reč
     async function speakText(text) {
-        // Natívny TTS nemá problém so zasekávaním v porovnaní s API, ale stále ho treba povoliť užívateľskou interakciou.
         if (typeof window.speechSynthesis === 'undefined' || !selectedVoice || !text) {
-             console.warn("TTS: Prehliadač nepodporuje alebo nebol nájdený hlas.");
+             console.warn("TTS: Prehliadač nepodporuje alebo nebol vybraný hlas.");
              return;
         }
 
@@ -516,13 +577,20 @@
 
         if (cleanText.length === 0) return;
         
-        console.log(`TTS: Pripravujem sa na čítanie textu: "${cleanText.substring(0, 50)}..."`);
-
-
         const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.voice = selectedVoice;
-        utterance.rate = 1.0; // Rýchlosť
-        utterance.pitch = 1.0; // Výška
+        
+        // Find the correct voice object again based on the selected name
+        const voices = window.speechSynthesis.getVoices();
+        const currentSelectedVoice = voices.find(voice => voice.name === voiceSelect.value);
+        
+        if (currentSelectedVoice) {
+             utterance.voice = currentSelectedVoice;
+        } else if (selectedVoice) {
+             utterance.voice = selectedVoice;
+        }
+
+        utterance.rate = 1.0; 
+        utterance.pitch = 1.0; 
         
         window.speechSynthesis.speak(utterance);
     }
@@ -850,6 +918,7 @@ ${aiCode}
 </script>
 </body>
 </html>
+
 
 
 
