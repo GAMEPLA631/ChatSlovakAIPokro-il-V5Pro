@@ -109,7 +109,7 @@
     </style>
     <script>
         // Konštanta pre API Key. Vlož svoj kľúč tu.
-        const apiKey = "AIzaSyAzWkdCBiqlrFZODs2zEichlIWe68Wo2eI"; // !!! KĽÚČ JE NASTAVENÝ NA PRÁZDNY REŤAZEC PRE AUTOMATICKÚ AUTENTIFIKÁCIU V CANVASE !!!
+        const apiKey = "AIzaSyDdiCiIfr2gLtsRMENBkWG1hJo6N1uij7w"; // !!! KĽÚČ JE NASTAVENÝ NA PRÁZDNY REŤAZEC PRE AUTOMATICKÚ AUTENTIFIKÁCIU V CANVASE !!!
         
         // --- ŠPECIFIKOVANÝ MODEL ---
         const MODEL_NAME = "gemini-2.5-flash-preview-05-20";
@@ -137,7 +137,7 @@
                a. Creation of 3D models and assets (Parts, Unions, MeshParts).
                b. Advanced game logic for NPCs, maps, and special effects.
                ***CRITICAL RULE: When a user explicitly requests code (e.g., uses keywords like 'kód', 'vygeneruj', 'lua'), minimize conversational preamble and focus purely on the technical output. Provide the complete, runnable Lua code in a single code block immediately, followed only by a very brief explanation if necessary.***
-            3. **Generovanie Hudobných Žánrov a Štýlov (AI Music Prompting):** Dokážeš generovať rozsiahle zoznamy detailných žánrov a kľúčových slov hudobného štýlu, inšpirované promptmi pre AI generátory hudby ako je Suno AI. Tieto žánre by mali byť expresívne a kombinovať prvky nálady, žánru, tempa, inštrumentácie a produkčného štýlu (napríklad: 'Darkness, Horror, Creepy, Ambient, Scary, Orchestral, Cinematic, 808 Bass, Synthwave, Epic Tension').
+            3. **Generovanie Hudobných Žánrov a Štýlov (AI Music Prompting):** Dokážeš generovať rozsiahle a detailné promptové reťazce pre AI generátory hudby (ako je Suno AI). Konkrétne, dokážeš vytvárať **dva špecializované a extrémne zoznamy kľúčových slov** (napr. 'Zoznam 1: Extrémny a Agresívny Bass' a 'Zoznam 2: Temný a Atmosférický Horror'). Tieto žánre musia byť expresívne a kombinovať prvky nálady, žánru, tempa, inštrumentácie a extrémneho produkčného štýlu (napríklad: 'Extreme Bass, Brutal Aggression, Distorted 808s, Sub-Bass, Hyper-Aggressive, Dark Trap, Industrial Noise, Speedcore').
             4. Poskytovanie bežných, bystrých a kreatívnych odpovedí na chat.
             Your responses should reflect the capabilities of a 'Pro' model (${MODEL_NAME}).
         `;
@@ -355,7 +355,7 @@
          * Zobrazí úvodnú správu od AI.
          */
         function displayWelcomeMessage() {
-            const welcomeText = `Ahoj! Som **ChatSlovak AI V5 Pro**. Dokážem s tebou viesť bežnú komunikáciu, odpovedať na otázky vďaka Google Search/YouTube, generovať pokročilé Roblox Lua kódy pre NPC a mapy a tiež navrhovať **profesionálne hudobné žánrové kľúčové slová** pre nástroje ako Suno AI. Začnime!`;
+            const welcomeText = `Ahoj! Som **ChatSlovak AI V5 Pro**. Dokážem s tebou viesť bežnú komunikáciu, odpovedať na otázky vďaka Google Search/YouTube, generovať pokročilé Roblox Lua kódy pre NPC a mapy a tiež navrhovať **profesionálne hudobné žánrové kľúčové slová** pre nástroje ako Suno AI, vrátane extrémne bassových žánrov. Začnime!`;
             appendMessage('ai', welcomeText, [], false); // Nesmie hovoriť úvodnú správu
         }
 
@@ -621,7 +621,7 @@
 
             <!-- Vstup a tlačidlo -->
             <div class="flex space-x-3">
-                <input type="text" id="user-input" class="glass-input flex-grow p-3 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none placeholder-gray-700 text-gray-900" placeholder="Napíš svoju otázku (napr. 'Navrhni žánre pre Suno o vesmírnom horore')">
+                <input type="text" id="user-input" class="glass-input flex-grow p-3 rounded-xl focus:ring-2 focus:ring-blue-400 focus:outline-none placeholder-gray-700 text-gray-900" placeholder="Napíš svoju otázku (napr. 'Navrhni žánre pre Suno o extrémne bassovej hudbe')">
                 <button id="send-button" class="glass-button px-6 py-3 rounded-xl font-semibold text-gray-800 bg-white/50 hover:bg-white/70 flex items-center justify-center" aria-label="Odoslať správu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 19-3-9-9-3Z"/><path d="M22 2 11 13"/></svg>
                 </button>
@@ -632,6 +632,7 @@
 
 </body>
 </html>
+
 
 
 
